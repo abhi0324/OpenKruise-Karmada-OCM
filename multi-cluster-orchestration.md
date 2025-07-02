@@ -17,6 +17,8 @@
   - [Advanced StatefulSet Integration with Karmada](#advanced-statefulset-integration-with-karmada)
   - [SidecarSet Integration with Karmada](#sidecarset-integration-with-karmada)
   - [UnitedDeployment Integration with Karmada](#uniteddeployment-integration-with-karmada)
+  - [Deploying Sample Workloads](#deploying-sample-workloads)
+  - [Testing & Verification](#testing--verification)
   - [Best Practices for Karmada Integration](#best-practices-for-karmada-integration)
 - [Open Cluster Management (OCM) Integration](#open-cluster-management-ocm-integration)
   - [Architecture Overview for OCM](#architecture-overview-for-ocm)
@@ -366,7 +368,294 @@ spec:
         end
 ```
 
+### Deploying Sample Workloads
+
+> **Note:** Sample workload manifests for all major OpenKruise workload types (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment) are provided below for your reference. You only need to create and apply the manifests for the workloads you actually want to deploy.
+
+### CloneSet
+
+**Sample CloneSet YAML**
+
+```yaml
+apiVersion: apps.kruise.io/v1alpha1
+kind: CloneSet
+metadata:
+  name: sample-cloneset
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sample
+  template:
+    metadata:
+      labels:
+        app: sample
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.21
+```
+
+**Sample PropagationPolicy YAML for CloneSet**
+
+```yaml
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: sample-cloneset-propagation
+  namespace: default
+spec:
+  resourceSelectors:
+    - apiVersion: apps.kruise.io/v1alpha1
+      kind: CloneSet
+      name: sample-cloneset
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+```
+
+### Advanced StatefulSet
+
+**Sample Advanced StatefulSet YAML**
+
+```yaml
+apiVersion: apps.kruise.io/v1beta1
+kind: StatefulSet
+metadata:
+  name: sample-advancedstatefulset
+  namespace: default
+spec:
+  serviceName: sample-service
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sample-advancedstatefulset
+  template:
+    metadata:
+      labels:
+        app: sample-advancedstatefulset
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.21
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+```
+
+**Sample PropagationPolicy YAML for Advanced StatefulSet**
+
+```yaml
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: advancedstatefulset-propagation
+  namespace: default
+spec:
+  resourceSelectors:
+    - apiVersion: apps.kruise.io/v1beta1
+      kind: StatefulSet
+      name: sample-advancedstatefulset
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+```
+
+### SidecarSet
+
+**Sample SidecarSet YAML**
+
+> **Note:** The selector in SidecarSet must match the labels of the pods you want to inject the sidecar into.
+
+```yaml
+apiVersion: apps.kruise.io/v1alpha1
+kind: SidecarSet
+metadata:
+  name: sample-sidecarset
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: sample
+  containers:
+    - name: sidecar
+      image: busybox:1.28
+      command: ["sleep", "3600"]
+```
+
+**Sample PropagationPolicy YAML for SidecarSet**
+
+```yaml
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: sidecarset-propagation
+  namespace: default
+spec:
+  resourceSelectors:
+    - apiVersion: apps.kruise.io/v1alpha1
+      kind: SidecarSet
+      name: sample-sidecarset
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+```
+
+### UnitedDeployment
+
+**Sample UnitedDeployment YAML**
+
+```yaml
+apiVersion: apps.kruise.io/v1alpha1
+kind: UnitedDeployment
+metadata:
+  name: sample-uniteddeployment
+  namespace: default
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: sample-uniteddeployment
+  template:
+    metadata:
+      labels:
+        app: sample-uniteddeployment
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.21
+  topology:
+    pools:
+      - name: pool-a
+        nodeSelectorTerm:
+          matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values: ["zone-a"]
+        replicas: 2
+      - name: pool-b
+        nodeSelectorTerm:
+          matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values: ["zone-b"]
+        replicas: 2
+```
+
+**Sample PropagationPolicy YAML for UnitedDeployment**
+
+```yaml
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: uniteddeployment-propagation
+  namespace: default
+spec:
+  resourceSelectors:
+    - apiVersion: apps.kruise.io/v1alpha1
+      kind: UnitedDeployment
+      name: sample-uniteddeployment
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+```
+
+#### Apply the Resources
+
+```bash
+# Apply the CloneSet
+kubectl apply -f sample-cloneset.yaml
+
+# Apply the Advanced StatefulSet
+kubectl apply -f sample-advancedstatefulset.yaml
+
+# Apply the SidecarSet
+kubectl apply -f sample-sidecarset.yaml
+
+# Apply the UnitedDeployment
+kubectl apply -f sample-uniteddeployment.yaml
+
+# Apply the PropagationPolicies
+kubectl apply -f sample-propagationpolicy-cloneset.yaml
+kubectl apply -f sample-propagationpolicy-advancedstatefulset.yaml
+kubectl apply -f sample-propagationpolicy-sidecarset.yaml
+kubectl apply -f sample-propagationpolicy-uniteddeployment.yaml
+```
+
+#### Verify the Status
+
+- **Check the clusters managed by Karmada:**
+  ```bash
+  karmadactl get clusters
+  ```
+- **Check the CloneSet status across all clusters:**
+  ```bash
+  kubectl get cloneset -A
+  ```
+- **Check the Advanced StatefulSet status across all clusters:**
+  ```bash
+  kubectl get statefulset -A
+  ```
+- **Check the SidecarSet status across all clusters:**
+  ```bash
+  kubectl get sidecarset -A
+  ```
+- **Check the UnitedDeployment status across all clusters:**
+  ```bash
+  kubectl get uniteddeployment -A
+  ```
+- **Check the propagated resource in a specific member cluster:**
+  ```bash
+  kubectl --kubeconfig=<MEMBER_CLUSTER_KUBECONFIG> get all -n default
+  ```
+
+### Testing & Verification
+
+To verify that your workload is distributed and running correctly across clusters:
+
+1. **List all clusters managed by Karmada:**
+   ```bash
+   karmadactl get clusters
+   ```
+2. **Check workload status in the control plane:**
+   ```bash
+   kubectl get cloneset,statefulset,sidecarset,uniteddeployment -A
+   ```
+3. **Check workload status in each member cluster:**
+   ```bash
+   kubectl --kubeconfig=<MEMBER_CLUSTER_KUBECONFIG> get all -n default
+   ```
+4. **Check pod status in each member cluster:**
+   ```bash
+   kubectl --kubeconfig=<MEMBER_CLUSTER_KUBECONFIG> get pods -n default
+   ```
+5. **Check logs for a pod (optional):**
+   ```bash
+   kubectl --kubeconfig=<MEMBER_CLUSTER_KUBECONFIG> logs <POD_NAME> -n default
+   ```
+6. **Check PropagationPolicy status:**
+   ```bash
+   kubectl get propagationpolicy -n default
+   kubectl describe propagationpolicy <policy-name> -n default
+   ```
+
 ### Best Practices for Karmada Integration
+
+#### General Best Practices
 
 1.  **CRD Synchronization**:
     -   Ensure OpenKruise CRDs are installed on all member clusters *before* propagating workloads. Use Karmada's `ClusterPropagationPolicy` to distribute the CRD definitions themselves.
@@ -378,16 +667,35 @@ spec:
     -   **Cross-check all status fields referenced in your Lua scripts with the latest OpenKruise CRD specifications to ensure completeness and accuracy.**
 
 3.  **Use Policies for Granularity**:
-    -   Rely on `PropagationPolicy` to control which clusters receive a workload.
-    -   Use `OverridePolicy` to apply cluster-specific modifications, such as different resource limits, image tags, or replica counts.
+    -   Use `PropagationPolicy` to control which clusters receive a workload.
+    -   Use `OverridePolicy` to apply cluster-specific modifications, such as different resource limits, image tags, or replica counts. `OverridePolicy` is optional, but highly recommended for real-world multi-cluster management where per-cluster customization is needed.
 
-4.  **Status and Health Checks**:
-    -   Write robust `statusAggregation` scripts to get a meaningful overview of your multi-cluster workload.
-    -   Define precise `healthInterpretation` logic. A workload isn't healthy just because it exists; it's healthy when it's ready and available.
-    -   **Add robust nil-checking and error handling in all Lua scripts to prevent runtime errors.**
+#### Status and Health Checks
 
-5.  **Version Alignment**:
-    -   **Ensure that OpenKruise, Karmada, and Kubernetes versions are compatible and up-to-date. Always refer to the official documentation for version compatibility matrices.**
+- Write robust `statusAggregation` scripts to get a meaningful overview of your multi-cluster workload.
+- Define precise `healthInterpretation` logic. A workload isn't healthy just because it exists; it's healthy when it's ready and available.
+- **Add robust nil-checking and error handling in all Lua scripts to prevent runtime errors.**
 
-6.  **SidecarSet Evolution**:
-    -   **Note:** OpenKruise v1.7+ introduced support for native Kubernetes sidecar containers. If you are using these features, review and update your interpreter logic as needed to accommodate any changes in the SidecarSet CRD or status fields.
+#### Version Alignment
+
+- **Ensure that OpenKruise, Karmada, and Kubernetes versions are compatible and up-to-date. Always refer to the official documentation for version compatibility matrices.**
+
+#### SidecarSet Evolution
+
+- **Note:** OpenKruise v1.7+ introduced support for native Kubernetes sidecar containers. If you are using these features, review and update your interpreter logic as needed to accommodate any changes in the SidecarSet CRD or status fields.
+
+#### Security Best Practices
+
+- Use RBAC and least-privilege permissions for Karmada and OpenKruise controllers.
+- Regularly review and audit access controls for all service accounts and users.
+
+#### Monitoring and Observability
+
+- Integrate with monitoring tools such as Prometheus and Grafana to track workload health, resource usage, and interpreter script status.
+- Set up alerts for failed propagations, unhealthy workloads, or interpreter errors.
+
+#### Automation and GitOps
+
+- Use GitOps tools (e.g., Argo CD, Flux) to manage interpreter scripts, PropagationPolicies, and OverridePolicies declaratively.
+- Store all configuration and policy YAMLs in version control for auditability and reproducibility.
+
