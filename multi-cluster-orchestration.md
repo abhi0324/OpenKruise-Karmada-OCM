@@ -372,9 +372,7 @@ spec:
 
 > **Note:** Sample workload manifests for all major OpenKruise workload types (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment) are provided below for your reference. You only need to create and apply the manifests for the workloads you actually want to deploy.
 
-### CloneSet
-
-**Sample CloneSet YAML**
+#### 1. Sample CloneSet YAML
 
 ```yaml
 apiVersion: apps.kruise.io/v1alpha1
@@ -397,7 +395,7 @@ spec:
           image: nginx:1.21
 ```
 
-**Sample PropagationPolicy YAML for CloneSet**
+#### 2. Sample PropagationPolicy YAML for CloneSet
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -417,9 +415,9 @@ spec:
         - member2
 ```
 
-### Advanced StatefulSet
+#### 3. Sample Advanced StatefulSet YAML
 
-**Sample Advanced StatefulSet YAML**
+This example demonstrates a minimal Advanced StatefulSet manifest using OpenKruise:
 
 ```yaml
 apiVersion: apps.kruise.io/v1beta1
@@ -451,7 +449,7 @@ spec:
             storage: 1Gi
 ```
 
-**Sample PropagationPolicy YAML for Advanced StatefulSet**
+#### 4. Sample PropagationPolicy YAML for Advanced StatefulSet
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -471,9 +469,9 @@ spec:
         - member2
 ```
 
-### SidecarSet
+#### 5. Sample SidecarSet YAML
 
-**Sample SidecarSet YAML**
+This example demonstrates a minimal SidecarSet manifest using OpenKruise:
 
 > **Note:** The selector in SidecarSet must match the labels of the pods you want to inject the sidecar into.
 
@@ -493,7 +491,7 @@ spec:
       command: ["sleep", "3600"]
 ```
 
-**Sample PropagationPolicy YAML for SidecarSet**
+#### 6. Sample PropagationPolicy YAML for SidecarSet
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -513,9 +511,9 @@ spec:
         - member2
 ```
 
-### UnitedDeployment
+#### 7. Sample UnitedDeployment YAML
 
-**Sample UnitedDeployment YAML**
+This example demonstrates a minimal UnitedDeployment manifest using OpenKruise:
 
 ```yaml
 apiVersion: apps.kruise.io/v1alpha1
@@ -554,7 +552,7 @@ spec:
         replicas: 2
 ```
 
-**Sample PropagationPolicy YAML for UnitedDeployment**
+#### 8. Sample PropagationPolicy YAML for UnitedDeployment
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -574,7 +572,7 @@ spec:
         - member2
 ```
 
-#### Apply the Resources
+#### 9. Apply the Resources
 
 ```bash
 # Apply the CloneSet
@@ -596,32 +594,32 @@ kubectl apply -f sample-propagationpolicy-sidecarset.yaml
 kubectl apply -f sample-propagationpolicy-uniteddeployment.yaml
 ```
 
-#### Verify the Status
+#### 10. Verify the Status
 
-- **Check the clusters managed by Karmada:**
-  ```bash
-  karmadactl get clusters
-  ```
-- **Check the CloneSet status across all clusters:**
-  ```bash
-  kubectl get cloneset -A
-  ```
-- **Check the Advanced StatefulSet status across all clusters:**
-  ```bash
-  kubectl get statefulset -A
-  ```
-- **Check the SidecarSet status across all clusters:**
-  ```bash
-  kubectl get sidecarset -A
-  ```
-- **Check the UnitedDeployment status across all clusters:**
-  ```bash
-  kubectl get uniteddeployment -A
-  ```
-- **Check the propagated resource in a specific member cluster:**
-  ```bash
-  kubectl --kubeconfig=<MEMBER_CLUSTER_KUBECONFIG> get all -n default
-  ```
+1. **Check the clusters managed by Karmada:**
+   ```bash
+   karmadactl get clusters
+   ```
+2. **Check the CloneSet status across all clusters:**
+   ```bash
+   kubectl get cloneset -A
+   ```
+3. **Check the Advanced StatefulSet status across all clusters:**
+   ```bash
+   kubectl get statefulset -A
+   ```
+4. **Check the SidecarSet status across all clusters:**
+   ```bash
+   kubectl get sidecarset -A
+   ```
+5. **Check the UnitedDeployment status across all clusters:**
+   ```bash
+   kubectl get uniteddeployment -A
+   ```
+6. **Check the propagated resource in a specific member cluster:**
+   ```bash
+   kubectl --kubeconfig=<MEMBER_CLUSTER_KUBECONFIG> get all -n default
+   ```
 
 ### Testing & Verification
 
