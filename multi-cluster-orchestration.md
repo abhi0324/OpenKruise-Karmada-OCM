@@ -1,6 +1,6 @@
 # Best Practices for OpenKruise Multi-Cluster Orchestration (Karmada/OCM)
 
-**Last Updated:** June 23, 2025
+**Last Updated:** June 02, 2025
 
 ## Table of Contents
 - [Introduction](#introduction)
