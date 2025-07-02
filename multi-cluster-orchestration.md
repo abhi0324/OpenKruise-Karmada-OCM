@@ -17,6 +17,7 @@
   - [Advanced StatefulSet Integration with Karmada](#advanced-statefulset-integration-with-karmada)
   - [SidecarSet Integration with Karmada](#sidecarset-integration-with-karmada)
   - [UnitedDeployment Integration with Karmada](#uniteddeployment-integration-with-karmada)
+  - [Best Practices for Karmada Integration](#best-practices-for-karmada-integration)
 - [Open Cluster Management (OCM) Integration](#open-cluster-management-ocm-integration)
   - [Architecture Overview for OCM](#architecture-overview-for-ocm)
   - [Installing and Configuring OCM](#installing-and-configuring-ocm)
