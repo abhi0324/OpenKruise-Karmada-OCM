@@ -71,7 +71,7 @@ export KUBECONFIG="$HOME/.kube/karmada.config"
 
 #### Installing OpenKruise
 
-> **Note:** Always check for the latest stable version of OpenKruise at [OpenKruise Releases](https://openkruise.io/docs/release/). Update the version in the command below as needed to match your environment.
+> **Note:** Always check for the latest stable version of OpenKruise at [OpenKruise Releases](https://github.com/openkruise/kruise/releases). Update the version in the command below as needed to match your environment.
 
 ```bash
 # Replace v1.8.0 with the latest stable version if available
