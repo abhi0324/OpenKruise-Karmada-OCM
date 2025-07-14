@@ -239,14 +239,15 @@ spec:
             updatedReplicas = updatedReplicas
           }
         end
-    retention:
-      luaScript: |
-        function Retain(desiredObj, observedObj)
-          if observedObj.spec.podManagementPolicy ~= nil then
-            desiredObj.spec.podManagementPolicy = observedObj.spec.podManagementPolicy
-          end
-          return desiredObj
-        end
+    # The retention of podManagementPolicy is not required if you use OrderedReady as recommended in best practices.
+    # retention:
+    #   luaScript: |
+    #     function Retain(desiredObj, observedObj)
+    #       if observedObj.spec.podManagementPolicy ~= nil then
+    #         desiredObj.spec.podManagementPolicy = observedObj.spec.podManagementPolicy
+    #       end
+    #       return desiredObj
+    #     end
     healthInterpretation:
       luaScript: |
         function InterpretHealth(observedObj)
@@ -273,7 +274,19 @@ spec:
     apiVersion: apps.kruise.io/v1alpha1
     kind: SidecarSet
   customizations:
-    replicas:
+    statusReflection:
+      luaScript: |
+        function ReflectStatus(observedObj)
+          if observedObj.status == nil then
+            return {}
+          end
+          return {
+            matchedPods = observedObj.status.matchedPods or 0,
+            updatedPods = observedObj.status.updatedPods or 0,
+            readyPods = observedObj.status.readyPods or 0
+          }
+        end
+    replicaResource:
       luaScript: |
         function GetReplicas(obj)
           -- SidecarSet doesn't manage replicas directly, return 0
@@ -284,41 +297,62 @@ spec:
         function AggregateStatus(desiredObj, statusItems)
           local matchedPods = 0
           local updatedPods = 0
+          local readyPods = 0
           for i = 1, #statusItems do
             local status = statusItems[i].status or {}
             matchedPods = matchedPods + (status.matchedPods or 0)
             updatedPods = updatedPods + (status.updatedPods or 0)
+            readyPods = readyPods + (status.readyPods or 0)
           end
           return {
-            matchedPods = matchedPods,
-            updatedPods = updatedPods
+            apiVersion = "apps.kruise.io/v1alpha1",
+            kind = "SidecarSet",
+            metadata = desiredObj.metadata,
+            status = {
+              matchedPods = matchedPods,
+              updatedPods = updatedPods,
+              readyPods = readyPods
+            }
           }
         end
     retention:
       luaScript: |
         function Retain(desiredObj, observedObj)
-          -- Preserve injectionStrategy if it exists
-          if observedObj.spec and observedObj.spec.injectionStrategy then
-            if not desiredObj.spec then
-              desiredObj.spec = {}
-            end
-            desiredObj.spec.injectionStrategy = observedObj.spec.injectionStrategy
-          end
-          -- Preserve status
-          if observedObj.status ~= nil then
-            desiredObj.status = observedObj.status
-          end
+          -- No specific retention logic needed as Karmada handles status preservation
           return desiredObj
         end
     healthInterpretation:
       luaScript: |
         function InterpretHealth(observedObj)
-          if observedObj.status == nil or observedObj.status.updatedPods == nil or observedObj.status.matchedPods == nil then
+          if observedObj.status == nil then
             return false
           end
-          -- A SidecarSet is healthy if all matched pods have been updated with the sidecar.
-          return observedObj.status.updatedPods == observedObj.status.matchedPods
+          local matchedPods = observedObj.status.matchedPods or 0
+          local updatedPods = observedObj.status.updatedPods or 0
+          -- If no pods are matched, consider it healthy (nothing to update)
+          if matchedPods == 0 then
+            return true
+          end
+          -- A SidecarSet is healthy if all matched pods have been updated
+          return updatedPods == matchedPods
         end
+    dependencyInterpretation:
+      luaScript: |
+        -- Karmada does not manage dependencies for SidecarSet by default.
+        function GetDependencies(desiredObj)
+          local dependencies = {}
+          if not desiredObj.spec then
+            return dependencies
+          end
+          -- Helper function to add a dependency
+          local function addDependency(kind, name, namespace)
+            table.insert(dependencies, {
+              apiVersion = "v1",
+              kind = kind,
+              name = name,
+              namespace = namespace or (desiredObj.metadata and desiredObj.metadata.namespace)
+            })
+          end
 ```
 
 ### UnitedDeployment Integration with Karmada
@@ -651,49 +685,222 @@ To verify that your workload is distributed and running correctly across cluster
    kubectl describe propagationpolicy <policy-name> -n default
    ```
 
-### Best Practices for Karmada Integration
+## Best Practices for Karmada Integration
 
-#### General Best Practices
+### Supported Workloads Status
 
-1.  **CRD Synchronization**:
-    -   Ensure OpenKruise CRDs are installed on all member clusters *before* propagating workloads. Use Karmada's `ClusterPropagationPolicy` to distribute the CRD definitions themselves.
-    -   Keep CRD versions consistent across the fleet to avoid compatibility issues.
+| Workload | Karmada Support | Status | Notes |
+|----------|----------------|--------|-------|
+| **CloneSet** | ✅ Full Support | Production Ready | Most mature integration |
+| **Advanced StatefulSet** | ✅ Full Support | Production Ready | Enhanced StatefulSet features |
+| **SidecarSet** | ⚠️ Limited Support | Experimental | Requires custom interpreter |
+| **UnitedDeployment** | ⚠️ Limited Support | Experimental | Requires custom interpreter |
 
-2.  **Interpreter Script Management**:
-    -   Store your `ResourceInterpreterCustomization` scripts in version control.
-    -   **Test scripts thoroughly in a staging environment before applying them to the Karmada control plane. A faulty script can impact workload orchestration.**
-    -   **Cross-check all status fields referenced in your Lua scripts with the latest OpenKruise CRD specifications to ensure completeness and accuracy.**
+> **Tip:** Always check the [Karmada Supported Versions](https://karmada.io/docs/releases/#support-versions) and [OpenKruise Releases](https://github.com/openkruise/kruise/releases) for the latest compatibility and supported features.
 
-3.  **Use Policies for Granularity**:
-    -   Use `PropagationPolicy` to control which clusters receive a workload.
-    -   Use `OverridePolicy` to apply cluster-specific modifications, such as different resource limits, image tags, or replica counts. `OverridePolicy` is optional, but highly recommended for real-world multi-cluster management where per-cluster customization is needed.
+### General Best Practices
+
+#### CRD Synchronization
+- Ensure OpenKruise CRDs are installed on all member clusters *before* propagating workloads. Use Karmada's `ClusterPropagationPolicy` to distribute the CRD definitions themselves.
+- Keep CRD versions consistent across the fleet to avoid compatibility issues.
+
+#### Interpreter Script Management
+- Store your `ResourceInterpreterCustomization` scripts in version control (e.g., Git).
+- **Test scripts thoroughly in a staging environment before applying them to the Karmada control plane. A faulty script can impact workload orchestration.**
+- **Cross-check all status fields referenced in your Lua scripts with the latest OpenKruise CRD specifications to ensure completeness and accuracy.**
+- > **Warning:** Always add nil checks and error handling in Lua scripts to prevent runtime errors.
+
+#### Use Policies for Granularity
+- Use `PropagationPolicy` to control which clusters receive a workload.
+- Use `OverridePolicy` to apply cluster-specific modifications, such as different resource limits, image tags, or replica counts.
+> **Tip:** `OverridePolicy` is optional if you want the same configuration in all clusters, but is highly recommended for real-world multi-cluster management where per-cluster customization is needed.
 
 #### Status and Health Checks
-
 - Write robust `statusAggregation` scripts to get a meaningful overview of your multi-cluster workload.
 - Define precise `healthInterpretation` logic. A workload isn't healthy just because it exists; it's healthy when it's ready and available.
 - **Add robust nil-checking and error handling in all Lua scripts to prevent runtime errors.**
 
 #### Version Alignment
-
-- **Ensure that OpenKruise, Karmada, and Kubernetes versions are compatible and up-to-date. Always refer to the official documentation for version compatibility matrices.**
-
-#### SidecarSet Evolution
-
-- **Note:** OpenKruise v1.7+ introduced support for native Kubernetes sidecar containers. If you are using these features, review and update your interpreter logic as needed to accommodate any changes in the SidecarSet CRD or status fields.
+- **Ensure that OpenKruise, Karmada, and Kubernetes versions are compatible and up-to-date. Always refer to the [Karmada Supported Versions](https://karmada.io/docs/releases/#support-versions) and [OpenKruise Releases](https://github.com/openkruise/kruise/releases) for compatibility information.**
 
 #### Security Best Practices
-
 - Use RBAC and least-privilege permissions for Karmada and OpenKruise controllers.
 - Regularly review and audit access controls for all service accounts and users.
+- Grant only the minimum permissions required for Karmada controllers and OpenKruise webhooks.
+- Periodically audit ClusterRoleBindings and RoleBindings for unnecessary privileges.
+> **Warning:** Overly broad permissions can lead to security vulnerabilities in your multi-cluster environment.
 
 #### Monitoring and Observability
-
 - Integrate with monitoring tools such as Prometheus and Grafana to track workload health, resource usage, and interpreter script status.
+- Monitor the status of ResourceBinding, PropagationPolicy, and interpreter pod logs for errors.
 - Set up alerts for failed propagations, unhealthy workloads, or interpreter errors.
+> **Tip:** Monitoring and alerting are essential for production-grade multi-cluster management.
 
 #### Automation and GitOps
-
 - Use GitOps tools (e.g., Argo CD, Flux) to manage interpreter scripts, PropagationPolicies, and OverridePolicies declaratively.
 - Store all configuration and policy YAMLs in version control for auditability and reproducibility.
+- GitOps enables version control, auditability, and automated rollbacks for your multi-cluster policies.
+
+### Workload-Specific Best Practices
+
+#### CloneSet
+
+**What Works Well:**
+- Basic replica management, image updates, scaling operations, and health checks are well supported.
+
+**Limitations:**
+- `partition` field is not supported for per-cluster partitioning.
+- In-place update status fields may not aggregate correctly across clusters.
+
+> **Workaround:** Use `OverridePolicy` for per-cluster partition control.
+
+**Recommended Configuration:**
+```yaml
+apiVersion: apps.kruise.io/v1alpha1
+kind: CloneSet
+metadata:
+  name: my-cloneset
+spec:
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Avoid using partition with Karmada
+      # partition: 1
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: my-app:v1.0.0
+```
+
+#### Advanced StatefulSet
+
+**What Works Well:**
+- Replica management, volume management (with proper PVC propagation), ordered deployment.
+
+**Limitations:**
+- `podManagementPolicy: Parallel` may cause race conditions; use `OrderedReady` for predictable propagation.
+- PVCs created by Advanced StatefulSet are not automatically propagated by Karmada.
+
+> **Workaround:** Create a separate PropagationPolicy for PVCs if needed.
+
+**Recommended Configuration:**
+```yaml
+apiVersion: apps.kruise.io/v1beta1
+kind: StatefulSet
+metadata:
+  name: my-statefulset
+spec:
+  replicas: 3
+  podManagementPolicy: OrderedReady
+  serviceName: my-service
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: my-app:v1.0.0
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+```
+
+#### SidecarSet
+
+**What Works Well:**
+- Sidecar injection, basic status reporting.
+
+**Limitations:**
+- Pod selector may not match pods in all target clusters; injection strategy may not work as expected in multi-cluster scenarios.
+
+> **Workaround:** Use `OverridePolicy` to adjust selectors per cluster and use explicit injection strategy for predictable behavior.
+
+**Recommended Configuration:**
+```yaml
+apiVersion: apps.kruise.io/v1alpha1
+kind: SidecarSet
+metadata:
+  name: my-sidecarset
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+  containers:
+    - name: sidecar
+      image: sidecar:v1.0.0
+      command: ["sleep", "3600"]
+  injectionStrategy:
+    revision: "v1"
+    policy: "Always"
+```
+
+#### UnitedDeployment
+
+**What Works Well:**
+- Basic replica distribution, simple topology management.
+
+**Limitations:**
+- Native topology management may conflict with Karmada's placement logic; status aggregation is complex.
+
+> **Workaround:** Use simple topology or rely on Karmada policies for placement. Use simplified status aggregation scripts.
+
+**Recommended Configuration:**
+> **Note:** To avoid conflicts with Karmada's placement engine, use simple pools in UnitedDeployment. Cluster distribution should be handled by Karmada's PropagationPolicy, not UnitedDeployment's topology. If you need to use nodeSelectorTerm for grouping within a cluster, you can do so, but avoid using it for cross-cluster placement.
+
+```yaml
+apiVersion: apps.kruise.io/v1alpha1
+kind: UnitedDeployment
+metadata:
+  name: my-uniteddeployment
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: my-app:v1.0.0
+  topology:
+    pools:
+      - name: default
+        replicas: 2
+        nodeSelectorTerm:
+          matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values: ["zone-a"]
+      - name: another-pool
+        replicas: 2
+        nodeSelectorTerm:
+          matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values: ["zone-b"]
+```
+
+### Troubleshooting and Limitations
+
+> **Tip:** See the Troubleshooting Guide section for common issues, debug commands, and workarounds for known limitations.
+
+### Summary
+
+- Follow these best practices to ensure robust, secure, and maintainable multi-cluster orchestration with Karmada and OpenKruise.
+- Regularly review official documentation for updates and new features.
+- Use monitoring, automation, and security best practices for production environments.
 
