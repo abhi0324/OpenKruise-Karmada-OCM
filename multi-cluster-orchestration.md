@@ -1,25 +1,51 @@
 # Best Practices for OpenKruise Multi-Cluster Orchestration (Karmada/OCM)
 
-**Last Updated:** June 15, 2025
+**Last Updated:** July 28, 2025
+
+---
 
 ## Table of Contents
 - [Introduction](#introduction)
-- [Project Scope and Terms](#project-scope-and-terms)
+- [Architecture Overview](#architecture-overview)
+- [Project Scope](#project-scope)
 - [OpenKruise Workloads Overview](#openkruise-workloads-overview)
 - [Karmada Integration](#karmada-integration)
   - [Karmada Installation and Setup](#karmada-installation-and-setup)
     - [Prerequisites](#prerequisites)
     - [Installing Karmada](#installing-karmada)
     - [Installing OpenKruise](#installing-openkruise)
+    - [Correctness Check: Karmada Control Plane](#correctness-check-karmada-control-plane)
     - [Registering Clusters](#registering-clusters)
   - [Resource Interpreter Framework](#resource-interpreter-framework)
   - [CloneSet Integration with Karmada](#cloneset-integration-with-karmada)
   - [Advanced StatefulSet Integration with Karmada](#advanced-statefulset-integration-with-karmada)
   - [SidecarSet Integration with Karmada](#sidecarset-integration-with-karmada)
   - [UnitedDeployment Integration with Karmada](#uniteddeployment-integration-with-karmada)
-  - [Deploying Sample Workloads](#deploying-sample-workloads)
+- [Deployment](#deployment)
+  - [Deploying CloneSet](#deploying-cloneset)
+  - [Deploying Advanced StatefulSet](#deploying-advanced-statefulset)
+  - [Deploying SidecarSet](#deploying-sidecarset)
+  - [Deploying UnitedDeployment](#deploying-uniteddeployment)
+  - [Apply the Resources](#apply-the-resources)
+  - [Verify the Status](#verify-the-status)
   - [Testing & Verification](#testing--verification)
-  - [Best Practices for Karmada Integration](#best-practices-for-karmada-integration)
+- [Best Practices for Karmada Integration](#best-practices-for-karmada-integration)
+  - [Supported Workloads Status](#supported-workloads-status)
+  - [General Best Practices](#general-best-practices)
+    - [CRD Synchronization](#crd-synchronization)
+    - [Interpreter Script Management](#interpreter-script-management)
+    - [Use Policies for Granularity](#use-policies-for-granularity)
+    - [Status and Health Checks](#status-and-health-checks)
+    - [Version Alignment](#version-alignment)
+    - [Security Best Practices](#security-best-practices)
+    - [Monitoring and Observability](#monitoring-and-observability)
+    - [Automation and GitOps](#automation-and-gitops)
+  - [Workload-Specific Best Practices](#workload-specific-best-practices)
+    - [CloneSet](#cloneset-1)
+    - [Advanced StatefulSet](#advanced-statefulset-1)
+    - [SidecarSet](#sidecarset-1)
+    - [UnitedDeployment](#uniteddeployment-1)
+- [Troubleshooting and Limitations](#troubleshooting-and-limitations)
 - [Open Cluster Management (OCM) Integration](#open-cluster-management-ocm-integration)
   - [Architecture Overview for OCM](#architecture-overview-for-ocm)
   - [Installing and Configuring OCM](#installing-and-configuring-ocm)
@@ -34,22 +60,64 @@
 
 ## Introduction
 
-[OpenKruise](https://openkruise.io) is a Kubernetes extension that provides advanced workload management, such as CloneSet, Advanced StatefulSet, SidecarSet, and UnitedDeployment. For multi-cluster scenarios, [Karmada](https://karmada.io) and [Open Cluster Management (OCM)](https://open-cluster-management.io) are widely used orchestration systems. This document provides best practices and official guidelines for integrating OpenKruise workloads with Karmada and OCM.
+This guide provides practical best practices for deploying and managing OpenKruise workloads across multiple Kubernetes clusters using Karmada or Open Cluster Management (OCM). It is intended for platform engineers, SREs, and DevOps teams who want to achieve reliable, scalable, and maintainable multi-cluster application delivery.
 
-## Project Scope and Terms
+Multi-cluster orchestration is crucial for achieving high availability, robust disaster recovery, geographic proximity for lower latency, and optimizing costs through efficient resource utilization. This document details how OpenKruise, an advanced workload management suite, integrates seamlessly with multi-cluster control planes to deliver these benefits.
 
-- **Project**: CNCF - OpenKruise: Best Practice for Karmada/OCM Integration (2025 Term 2)
-- **Term 2**: Jun - Aug 2025
-- **Goal**: Provide official guidelines for using OpenKruise workloads in Karmada and OCM, including supported features, limitations, and interpreter scripts.
+**What you'll learn:**
+- How to set up and integrate OpenKruise with Karmada/OCM
+- How to deploy and manage advanced workloads (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment)
+- How to validate, monitor, and troubleshoot your multi-cluster deployments
+- Key best practices for production environments
+
+---
+
+## Architecture Overview
+
+![Architecture Diagram](architecture.png)
+
+*Figure: High-level architecture of multi-cluster orchestration with Karmada and OpenKruise.*
+
+**System Components:**
+- **Karmada Control Plane:** Manages multi-cluster orchestration and policy propagation.
+- **Member Clusters:** Kubernetes clusters registered with Karmada, each running OpenKruise.
+- **OpenKruise:** Installed in each member cluster to provide advanced workload management.
+- **Workloads:** CloneSet, Advanced StatefulSet, SidecarSet, and UnitedDeployment resources managed across clusters.
+- **Policies & Interpreters:** Control workload placement, overrides, and status aggregation.
+
+**Interaction Flow:**
+1. The Karmada control plane manages and propagates workload manifests and policies to member clusters.
+2. OpenKruise in each member cluster manages the lifecycle of advanced workloads.
+3. Policies and interpreters ensure correct placement, customization, and status reporting for each workload.
+
+---
+
+## Project Scope
+
+- **Objective:** Provide official, actionable guidelines for multi-cluster OpenKruise workload management.
+- **Audience:** Engineers and operators working with Karmada, OCM, and OpenKruise.
+- **Coverage:** Installation, integration, workload deployment, validation, troubleshooting, and best practices.
+
+### Goals
+- Successfully deploy and manage OpenKruise workloads with Karmada/OCM
+- Understand how to write and use custom interpreters
+- Implement robust multi-cluster scaling and management strategies
+- Validate, monitor, and troubleshoot multi-cluster deployments
+
+---
 
 ## OpenKruise Workloads Overview
 
-- **CloneSet**: Enhanced Deployment with in-place update, partitioned rolling update, and advanced scaling strategies.
-- **Advanced StatefulSet**: StatefulSet with extra features (e.g., in-place update, pod management policies, persistent volume management).
-- **SidecarSet**: Sidecar container management for multiple pods, enabling dynamic injection and update of sidecars.
-- **UnitedDeployment**: Multi-domain workload management, allowing deployment of workloads across multiple zones or clusters with fine-grained control.
+- **CloneSet:** Advanced deployment with in-place updates and rolling strategies.
+- **Advanced StatefulSet:** Stateful workloads with enhanced features.
+- **SidecarSet:** Dynamic sidecar injection and management.
+- **UnitedDeployment:** Multi-domain workload management for fine-grained control.
+
+---
 
 ## Karmada Integration
+
+It's a common and recommended practice to propagate the OpenKruise Custom Resource Definitions (CRDs) and its controller (manager) to member clusters using Karmada's `ClusterPropagationPolicy`. This automates the setup of OpenKruise across your fleet, ensuring consistency and simplified management, rather than manually installing it on each member cluster.
 
 ### Karmada Installation and Setup
 
@@ -71,14 +139,19 @@ hack/local-up-karmada.sh
 export KUBECONFIG="$HOME/.kube/karmada.config"
 ```
 
-#### Installing OpenKruise
+#### Correctness Check: Karmada Control Plane
 
-> **Note:** Always check for the latest stable version of OpenKruise at [OpenKruise Releases](https://github.com/openkruise/kruise/releases). Update the version in the command below as needed to match your environment.
+After installation, verify that the Karmada control plane is running:
 
 ```bash
-# Replace v1.8.0 with the latest stable version if available
-kubectl apply -f https://openkruise.io/manifests/latest/kruise.yaml
+kubectl get pods -n karmada-system
 ```
+
+> **Expected Output:** All pods should be in the `Running` state. If not, check logs with:
+>
+> ```bash
+> kubectl logs -n karmada-system <pod-name>
+> ```
 
 #### Registering Clusters
 
@@ -91,6 +164,8 @@ kubectl get clusters --kubeconfig=$HOME/.kube/karmada.config
 ```
 
 ### Resource Interpreter Framework
+
+The `ResourceInterpreterCustomization` CRD allows you to define how Karmada understands and interacts with custom resources like those provided by OpenKruise. These interpreter definitions are themselves declarative Kubernetes objects, meaning they can be version-controlled and applied using GitOps principles, ensuring consistent behavior across your entire multi-cluster environment.
 
 - **Built-in Interpreter**: Handles standard Kubernetes resources.
 - **Customized Interpreter**: For CRDs (like OpenKruise), users can define custom logic using Lua scripts via the `ResourceInterpreterCustomization` CRD.
@@ -402,11 +477,13 @@ spec:
         end
 ```
 
-### Deploying Sample Workloads
+# Deployment
 
-> **Note:** Sample workload manifests for all major OpenKruise workload types (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment) are provided below for your reference. You only need to create and apply the manifests for the workloads you actually want to deploy.
+Sample workload manifests for all major OpenKruise workload types (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment) are provided below for your reference. You only need to create and apply the manifests for the workloads you actually want to deploy.
 
-#### 1. Sample CloneSet YAML
+## Deploying CloneSet
+
+#### Sample CloneSet YAML
 
 ```yaml
 apiVersion: apps.kruise.io/v1alpha1
@@ -429,7 +506,7 @@ spec:
           image: nginx:1.21
 ```
 
-#### 2. Sample PropagationPolicy YAML for CloneSet
+#### Sample PropagationPolicy YAML for CloneSet
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -449,7 +526,9 @@ spec:
         - member2
 ```
 
-#### 3. Sample Advanced StatefulSet YAML
+## Deploying Advanced StatefulSet
+
+#### Sample Advanced StatefulSet YAML
 
 This example demonstrates a minimal Advanced StatefulSet manifest using OpenKruise:
 
@@ -483,7 +562,7 @@ spec:
             storage: 1Gi
 ```
 
-#### 4. Sample PropagationPolicy YAML for Advanced StatefulSet
+#### Sample PropagationPolicy YAML for Advanced StatefulSet
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -503,7 +582,9 @@ spec:
         - member2
 ```
 
-#### 5. Sample SidecarSet YAML
+## Deploying SidecarSet
+
+#### Sample SidecarSet YAML
 
 This example demonstrates a minimal SidecarSet manifest using OpenKruise:
 
@@ -525,7 +606,7 @@ spec:
       command: ["sleep", "3600"]
 ```
 
-#### 6. Sample PropagationPolicy YAML for SidecarSet
+#### Sample PropagationPolicy YAML for SidecarSet
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -545,7 +626,9 @@ spec:
         - member2
 ```
 
-#### 7. Sample UnitedDeployment YAML
+## Deploying UnitedDeployment
+
+#### Sample UnitedDeployment YAML
 
 This example demonstrates a minimal UnitedDeployment manifest using OpenKruise:
 
@@ -586,7 +669,7 @@ spec:
         replicas: 2
 ```
 
-#### 8. Sample PropagationPolicy YAML for UnitedDeployment
+#### Sample PropagationPolicy YAML for UnitedDeployment
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -606,7 +689,7 @@ spec:
         - member2
 ```
 
-#### 9. Apply the Resources
+### Apply the Resources
 
 ```bash
 # Apply the CloneSet
@@ -628,7 +711,7 @@ kubectl apply -f sample-propagationpolicy-sidecarset.yaml
 kubectl apply -f sample-propagationpolicy-uniteddeployment.yaml
 ```
 
-#### 10. Verify the Status
+### Verify the Status
 
 1. **Check the clusters managed by Karmada:**
    ```bash
@@ -698,7 +781,7 @@ To verify that your workload is distributed and running correctly across cluster
 
 > **Tip:** Always check the [Karmada Supported Versions](https://karmada.io/docs/releases/#support-versions) and [OpenKruise Releases](https://github.com/openkruise/kruise/releases) for the latest compatibility and supported features.
 
-### General Best Practices
+## General Best Practices
 
 #### CRD Synchronization
 - Ensure OpenKruise CRDs are installed on all member clusters *before* propagating workloads. Use Karmada's `ClusterPropagationPolicy` to distribute the CRD definitions themselves.
@@ -724,26 +807,25 @@ To verify that your workload is distributed and running correctly across cluster
 - **Ensure that OpenKruise, Karmada, and Kubernetes versions are compatible and up-to-date. Always refer to the [Karmada Supported Versions](https://karmada.io/docs/releases/#support-versions) and [OpenKruise Releases](https://github.com/openkruise/kruise/releases) for compatibility information.**
 
 #### Security Best Practices
-- Use RBAC and least-privilege permissions for Karmada and OpenKruise controllers.
-- Regularly review and audit access controls for all service accounts and users.
-- Grant only the minimum permissions required for Karmada controllers and OpenKruise webhooks.
-- Periodically audit ClusterRoleBindings and RoleBindings for unnecessary privileges.
-> **Warning:** Overly broad permissions can lead to security vulnerabilities in your multi-cluster environment.
+- Use RBAC and least-privilege permissions for Karmada and OpenKruise controllers. Grant only the minimum necessary permissions. For Karmada, this typically means `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` on the resources it manages (e.g., `PropagationPolicy`, `OverridePolicy`, `ResourceBinding`, and the specific workloads it federates). For OpenKruise, ensure its controller has permissions over its CRDs and the native Kubernetes resources it manages (Pods, StatefulSets, Deployments, etc.).
+- Regularly review and audit access controls for all service accounts and users interacting with the Karmada control plane and member clusters.
+- Grant `cluster-admin` privileges only when absolutely unavoidable, preferring namespaced or specific resource permissions.
+> **Warning:** Overly broad permissions can lead to significant security vulnerabilities in your multi-cluster environment.
 
 #### Monitoring and Observability
 - Integrate with monitoring tools such as Prometheus and Grafana to track workload health, resource usage, and interpreter script status.
-- Monitor the status of ResourceBinding, PropagationPolicy, and interpreter pod logs for errors.
-- Set up alerts for failed propagations, unhealthy workloads, or interpreter errors.
-> **Tip:** Monitoring and alerting are essential for production-grade multi-cluster management.
+- Monitor the status of Karmada's `ResourceBinding` and `PropagationPolicy` objects to ensure successful distribution. Key metrics and events from the Karmada controller-manager and OpenKruise controller pods are essential.
+- Set up alerts for failed propagations, unhealthy workloads (e.g., `readyReplicas` != `replicas`), or errors reported by interpreter scripts.
+> **Tip:** Monitoring and alerting are essential for production-grade multi-cluster management. Pay close attention to logs from Karmada's `karmada-controller-manager` and `karmada-webhook` (for interpreter errors), as well as the OpenKruise manager in member clusters.
 
 #### Automation and GitOps
 - Use GitOps tools (e.g., Argo CD, Flux) to manage interpreter scripts, PropagationPolicies, and OverridePolicies declaratively.
 - Store all configuration and policy YAMLs in version control for auditability and reproducibility.
 - GitOps enables version control, auditability, and automated rollbacks for your multi-cluster policies.
 
-### Workload-Specific Best Practices
+## Workload-Specific Best Practices
 
-#### CloneSet
+### CloneSet
 
 **What Works Well:**
 - Basic replica management, image updates, scaling operations, and health checks are well supported.
@@ -777,14 +859,16 @@ spec:
           image: my-app:v1.0.0
 ```
 
-#### Advanced StatefulSet
+## Advanced StatefulSet
 
 **What Works Well:**
 - Replica management, volume management (with proper PVC propagation), ordered deployment.
 
 **Limitations:**
-- `podManagementPolicy: Parallel` may cause race conditions; use `OrderedReady` for predictable propagation.
-- PVCs created by Advanced StatefulSet are not automatically propagated by Karmada.
+- `partition` field is not natively supported for per-cluster partitioning by Karmada's propagation. This is because Karmada propagates the entire CloneSet manifest to a member cluster, and the local OpenKruise controller then applies the `partition` value within that single cluster's scope.
+- In-place update status fields may not aggregate correctly across clusters without specific interpreter logic.
+
+> **Workaround:** Use `OverridePolicy` for per-cluster partition control, allowing you to specify different partition values for the CloneSet in each target cluster.
 
 > **Workaround:** Create a separate PropagationPolicy for PVCs if needed.
 
@@ -816,15 +900,16 @@ spec:
             storage: 1Gi
 ```
 
-#### SidecarSet
+## SidecarSet
 
 **What Works Well:**
 - Sidecar injection, basic status reporting.
 
 **Limitations:**
-- Pod selector may not match pods in all target clusters; injection strategy may not work as expected in multi-cluster scenarios.
+- Pod selector in `SidecarSet` may not match pods in all target clusters as expected if selectors are highly specific to a cluster's environment.
+- Injection strategy (e.g., `Always`, `IfNotPresent`) may require careful consideration in multi-cluster scenarios to ensure sidecars are injected consistently and correctly across distributed pods.
 
-> **Workaround:** Use `OverridePolicy` to adjust selectors per cluster and use explicit injection strategy for predictable behavior.
+> **Workaround:** Use `OverridePolicy` to adjust selectors per cluster, or ensure your pod labeling strategy is consistent across all clusters. Explicit injection strategies (`Always`, `IfNotPresent`) can help ensure predictable behavior.
 
 **Recommended Configuration:**
 ```yaml
@@ -845,15 +930,16 @@ spec:
     policy: "Always"
 ```
 
-#### UnitedDeployment
+## UnitedDeployment
 
 **What Works Well:**
 - Basic replica distribution, simple topology management.
 
 **Limitations:**
-- Native topology management may conflict with Karmada's placement logic; status aggregation is complex.
+- Native topology management within `UnitedDeployment` (using `pools` with `nodeSelectorTerm` for cluster-level distribution) may conflict or overlap with Karmada's own advanced placement logic. Using both simultaneously for cluster selection can lead to unexpected behavior or redundant configuration.
+- Status aggregation for `UnitedDeployment` can be complex due to its domain-specific nature.
 
-> **Workaround:** Use simple topology or rely on Karmada policies for placement. Use simplified status aggregation scripts.
+> **Workaround:** For cluster distribution, it's generally recommended to rely primarily on Karmada's `PropagationPolicy` for cluster selection and replica distribution, using `UnitedDeployment`'s topology features for more granular control *within* a selected cluster (e.g., zone-based distribution via `nodeSelectorTerm`). Use simplified status aggregation scripts that focus on overall replica counts.
 
 **Recommended Configuration:**
 > **Note:** To avoid conflicts with Karmada's placement engine, use simple pools in UnitedDeployment. Cluster distribution should be handled by Karmada's PropagationPolicy, not UnitedDeployment's topology. If you need to use nodeSelectorTerm for grouping within a cluster, you can do so, but avoid using it for cross-cluster placement.
@@ -894,7 +980,7 @@ spec:
               values: ["zone-b"]
 ```
 
-### Troubleshooting and Limitations
+## Troubleshooting and Limitations
 
 > **Tip:** See the Troubleshooting Guide section for common issues, debug commands, and workarounds for known limitations.
 
@@ -903,4 +989,6 @@ spec:
 - Follow these best practices to ensure robust, secure, and maintainable multi-cluster orchestration with Karmada and OpenKruise.
 - Regularly review official documentation for updates and new features.
 - Use monitoring, automation, and security best practices for production environments.
+
+---
 
