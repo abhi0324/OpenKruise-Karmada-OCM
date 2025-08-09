@@ -40,14 +40,6 @@
   - [OCM Architecture Overview](#ocm-architecture-overview)
   - [OCM Installation and Setup](#ocm-installation-and-setup)
     - [OCM Prerequisites](#ocm-prerequisites)
-    - [Step 1: Install clusteradm](#step-1-install-clusteradm)
-    - [Step 2: Create KinD Clusters](#step-2-create-kind-clusters)
-    - [Step 3: Bootstrap the Hub Cluster](#step-3-bootstrap-the-hub-cluster)
-    - [Step 4: Join Managed Clusters](#step-4-join-managed-clusters)
-    - [Step 5: Install OpenKruise on Managed Clusters](#step-5-install-openkruise-on-managed-clusters)
-    - [Step 6: Grant RBAC Access to OCM Agent](#step-6-grant-rbac-access-to-ocm-agent)
-    - [Step 7: Verify Complete Setup](#step-7-verify-complete-setup)
-    - [Step 8: Troubleshooting Common Issues](#step-8-troubleshooting-common-issues)
   - [ManifestWork for OpenKruise Workloads](#manifestwork-for-openkruise-workloads)
     - [CloneSet with ManifestWork](#cloneset-with-manifestwork)
     - [Advanced StatefulSet with ManifestWork](#advanced-statefulset-with-manifestwork)
@@ -1169,24 +1161,11 @@ Open Cluster Management (OCM) is a CNCF project that provides a comprehensive so
 * Two or more Kubernetes clusters as managed clusters
 * OpenKruise installed on each managed cluster
 * `kubectl` access to all clusters
-* `clusteradm` CLI tool installed
+* `clusteradm` CLI tool (installed in Step 2)
 * KinD (Kubernetes in Docker) for local development/testing
 * Helm 3.x installed (for OpenKruise installation)
 
-#### Step 1: Install clusteradm
-
-```bash
-# Install clusteradm CLI tool
-curl -L https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh | bash
-
-# Verify installation
-clusteradm version
-
-# Add clusteradm to PATH if not already added
-export PATH=$PATH:$HOME/.local/bin
-```
-
-#### Step 2: Create KinD Clusters
+#### Step 1: Create KinD Clusters
 
 ```bash
 # Create hub cluster
@@ -1211,53 +1190,84 @@ kind create cluster --name cluster2
 kind get clusters
 ```
 
+#### Step 2: Install clusteradm
+
+```bash
+# Install clusteradm CLI tool
+curl -L https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh | bash
+
+# Verify installation
+clusteradm version
+
+# Add clusteradm to PATH if not already added
+export PATH=$PATH:$HOME/.local/bin
+```
+
 #### Step 3: Bootstrap the Hub Cluster
 
 ```bash
-# Switch to hub cluster context
 kubectl config use-context kind-hub
 
-# Initialize OCM hub with latest version
-clusteradm init --wait --context kind-hub --output-join-command-file join-command.sh
+#!/bin/bash
+set -e
+
+HUB_CONTEXT="kind-hub"
+
+# === Get Hub IP ===
+HUB_IP=$(docker inspect hub-control-plane --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+echo "🔗 Hub IP detected: $HUB_IP"
+
+# === Update kubeconfig for hub context ===
+echo "🛠 Updating kubeconfig server address for $HUB_CONTEXT..."
+kubectl config set-cluster "$HUB_CONTEXT" \
+  --server="https://$HUB_IP:6443" >/dev/null
+
+# === Verify connection ===
+echo "🔍 Verifying hub API connection..."
+kubectl cluster-info --context "$HUB_CONTEXT"
+
+# === Switch to hub and init OCM ===
+kubectl config use-context "$HUB_CONTEXT"
+echo "🚀 Initializing OCM hub..."
+clusteradm init --wait --output-join-command-file join-command.sh
+
+echo "✅ Hub initialized and join command saved to join-command.sh"
 
 # Verify hub installation
 kubectl get pods -n open-cluster-management-hub
 kubectl get crd | grep open-cluster-management
-
-# Get the join command for managed clusters
-clusteradm get token --context kind-hub
 ```
 
 #### Step 4: Join Managed Clusters
 
 ```bash
-# Get the hub cluster's internal Docker IP (required for KinD clusters)
-HUB_IP=$(docker inspect hub-control-plane | grep IPAddress | head -1 | awk '{print $2}' | tr -d '",')
+# Get Hub IP correctly
+HUB_IP=$(docker inspect hub-control-plane \
+  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 echo "Hub cluster IP: $HUB_IP"
 
-# Get the join token from the hub cluster
-kubectl config use-context kind-hub
-JOIN_TOKEN=$(clusteradm get token --context kind-hub | grep "clusteradm join" | awk '{print $4}')
-echo "Join token: $JOIN_TOKEN"
-
-# Clean up any existing failed setups (if needed)
+# Clean failed installs (optional)
 kubectl config use-context kind-cluster1
-kubectl delete ns open-cluster-management-agent --ignore-not-found=true
-kubectl delete ns open-cluster-management --ignore-not-found=true
+kubectl delete ns open-cluster-management-agent --ignore-not-found
+kubectl delete ns open-cluster-management --ignore-not-found
 
 kubectl config use-context kind-cluster2
-kubectl delete ns open-cluster-management-agent --ignore-not-found=true
-kubectl delete ns open-cluster-management --ignore-not-found=true
+kubectl delete ns open-cluster-management-agent --ignore-not-found
+kubectl delete ns open-cluster-management --ignore-not-found
 
-# Join cluster1 using the internal Docker IP
+# Join cluster1
+kubectl config use-context kind-hub
+JOIN_TOKEN=$(clusteradm get token --context kind-hub | grep "clusteradm join" | awk '{print $4}')
 kubectl config use-context kind-cluster1
 clusteradm join --hub-token $JOIN_TOKEN --hub-apiserver https://$HUB_IP:6443 --cluster-name cluster1 --wait
 
-# Join cluster2 using the internal Docker IP
+# Join cluster2 (new token!)
+kubectl config use-context kind-hub
+JOIN_TOKEN=$(clusteradm get token --context kind-hub | grep "clusteradm join" | awk '{print $4}')
 kubectl config use-context kind-cluster2
 clusteradm join --hub-token $JOIN_TOKEN --hub-apiserver https://$HUB_IP:6443 --cluster-name cluster2 --wait
 
-# Check for CSRs and managed clusters on the hub
+# Approve CSRs & check status
 kubectl config use-context kind-hub
 kubectl get csr
 kubectl get managedclusters
