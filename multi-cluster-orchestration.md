@@ -1,15 +1,16 @@
 # Best Practices for OpenKruise Multi-Cluster Orchestration (Karmada/OCM)
 
-**Last Updated:** July 28, 2025
+**Last Updated:** August 7, 2025
 
 ---
 
 ## Table of Contents
 - [Introduction](#introduction)
-- [Architecture Overview](#architecture-overview)
+- [Multi-Cluster Orchestration Overview](#multi-cluster-orchestration-overview)
 - [Project Scope](#project-scope)
 - [OpenKruise Workloads Overview](#openkruise-workloads-overview)
 - [Karmada Integration](#karmada-integration)
+  - [Karmada Architecture Overview](#karmada-architecture-overview)
   - [Karmada Installation and Setup](#karmada-installation-and-setup)
     - [Prerequisites](#prerequisites)
     - [Installing Karmada](#installing-karmada)
@@ -17,42 +18,63 @@
     - [Correctness Check: Karmada Control Plane](#correctness-check-karmada-control-plane)
     - [Registering Clusters](#registering-clusters)
   - [Resource Interpreter Framework](#resource-interpreter-framework)
-  - [CloneSet Integration with Karmada](#cloneset-integration-with-karmada)
-  - [Advanced StatefulSet Integration with Karmada](#advanced-statefulset-integration-with-karmada)
-  - [SidecarSet Integration with Karmada](#sidecarset-integration-with-karmada)
-  - [UnitedDeployment Integration with Karmada](#uniteddeployment-integration-with-karmada)
-- [Deployment](#deployment)
-  - [Deploying CloneSet](#deploying-cloneset)
-  - [Deploying Advanced StatefulSet](#deploying-advanced-statefulset)
-  - [Deploying SidecarSet](#deploying-sidecarset)
-  - [Deploying UnitedDeployment](#deploying-uniteddeployment)
-  - [Apply the Resources](#apply-the-resources)
-  - [Verify the Status](#verify-the-status)
-  - [Testing & Verification](#testing--verification)
-- [Best Practices for Karmada Integration](#best-practices-for-karmada-integration)
-  - [Supported Workloads Status](#supported-workloads-status)
-  - [General Best Practices](#general-best-practices)
-    - [CRD Synchronization](#crd-synchronization)
-    - [Interpreter Script Management](#interpreter-script-management)
-    - [Use Policies for Granularity](#use-policies-for-granularity)
-    - [Status and Health Checks](#status-and-health-checks)
-    - [Version Alignment](#version-alignment)
-    - [Security Best Practices](#security-best-practices)
-    - [Monitoring and Observability](#monitoring-and-observability)
-    - [Automation and GitOps](#automation-and-gitops)
-  - [Workload-Specific Best Practices](#workload-specific-best-practices)
-    - [CloneSet](#cloneset-1)
-    - [Advanced StatefulSet](#advanced-statefulset-1)
-    - [SidecarSet](#sidecarset-1)
-    - [UnitedDeployment](#uniteddeployment-1)
-- [Troubleshooting and Limitations](#troubleshooting-and-limitations)
+  - [OpenKruise Workload Integration with Karmada](#openkruise-workload-integration-with-karmada)
+    - [CloneSet Integration](#cloneset-integration)
+    - [Advanced StatefulSet Integration](#advanced-statefulset-integration)
+    - [SidecarSet Integration](#sidecarset-integration)
+    - [UnitedDeployment Integration](#uniteddeployment-integration)
+  - [Deployment Examples](#deployment-examples)
+    - [Deploying CloneSet](#deploying-cloneset)
+    - [Deploying Advanced StatefulSet](#deploying-advanced-statefulset)
+    - [Deploying SidecarSet](#deploying-sidecarset)
+    - [Deploying UnitedDeployment](#deploying-uniteddeployment)
+    - [Apply the Resources](#apply-the-resources)
+    - [Verify the Status](#verify-the-status)
+    - [Testing & Verification](#testing--verification)
+  - [Best Practices for Karmada Integration](#best-practices-for-karmada-integration)
+    - [Supported Workloads Status](#supported-workloads-status)
+    - [General Best Practices](#general-best-practices)
+    - [Workload-Specific Best Practices](#workload-specific-best-practices)
+    - [Advanced Patterns and Techniques](#advanced-patterns-and-techniques)
 - [Open Cluster Management (OCM) Integration](#open-cluster-management-ocm-integration)
-  - [Architecture Overview for OCM](#architecture-overview-for-ocm)
-  - [Installing and Configuring OCM](#installing-and-configuring-ocm)
+  - [OCM Architecture Overview](#ocm-architecture-overview)
+  - [OCM Installation and Setup](#ocm-installation-and-setup)
+    - [OCM Prerequisites](#ocm-prerequisites)
+    - [Step 1: Install clusteradm](#step-1-install-clusteradm)
+    - [Step 2: Create KinD Clusters](#step-2-create-kind-clusters)
+    - [Step 3: Bootstrap the Hub Cluster](#step-3-bootstrap-the-hub-cluster)
+    - [Step 4: Join Managed Clusters](#step-4-join-managed-clusters)
+    - [Step 5: Install OpenKruise on Managed Clusters](#step-5-install-openkruise-on-managed-clusters)
+    - [Step 6: Grant RBAC Access to OCM Agent](#step-6-grant-rbac-access-to-ocm-agent)
+    - [Step 7: Verify Complete Setup](#step-7-verify-complete-setup)
+    - [Step 8: Troubleshooting Common Issues](#step-8-troubleshooting-common-issues)
   - [ManifestWork for OpenKruise Workloads](#manifestwork-for-openkruise-workloads)
+    - [CloneSet with ManifestWork](#cloneset-with-manifestwork)
+    - [Advanced StatefulSet with ManifestWork](#advanced-statefulset-with-manifestwork)
+    - [SidecarSet with ManifestWork](#sidecarset-with-manifestwork)
+    - [UnitedDeployment with ManifestWork](#uniteddeployment-with-manifestwork)
+  - [Placement and PlacementDecision](#placement-and-placementdecision)
+  - [Deployment Examples](#deployment-examples-1)
+    - [Deploying CloneSet with OCM](#deploying-cloneset-with-ocm)
+    - [Deploying Advanced StatefulSet with OCM](#deploying-advanced-statefulset-with-ocm)
+    - [Deploying SidecarSet with OCM](#deploying-sidecarset-with-ocm)
+    - [Deploying UnitedDeployment with OCM](#deploying-uniteddeployment-with-ocm)
   - [Best Practices for OCM Integration](#best-practices-for-ocm-integration)
+    - [Supported Workloads Status](#supported-workloads-status-ocm)
+    - [General Best Practices](#general-best-practices-ocm)
+    - [Workload-Specific Best Practices](#workload-specific-best-practices-ocm)
+    - [Advanced ManifestWork Patterns](#advanced-manifestwork-patterns)
+    - [Operational Best Practices](#operational-best-practices)
+- [Comparison and Decision Guide](#comparison-and-decision-guide)
+  - [Karmada vs OCM Comparison](#karmada-vs-ocm-comparison)
+  - [When to Use Karmada](#when-to-use-karmada)
+  - [When to Use OCM](#when-to-use-ocm)
+  - [Migration Strategies](#migration-strategies)
 - [Troubleshooting Guide](#troubleshooting-guide)
-- [Common Challenges and Solutions](#common-challenges-and-solutions)
+  - [Common Issues and Solutions](#common-issues-and-solutions)
+  - [Debugging Techniques](#debugging-techniques)
+  - [Performance Optimization](#performance-optimization)
+- [Troubleshooting and Limitations](#troubleshooting-and-limitations)
 - [FAQ](#faq)
 - [References](#references)
 
@@ -72,23 +94,25 @@ Multi-cluster orchestration is crucial for achieving high availability, robust d
 
 ---
 
-## Architecture Overview
+## Multi-Cluster Orchestration Overview
 
-![Architecture Diagram](architecture.png)
+This guide covers two main approaches for multi-cluster orchestration with OpenKruise:
 
-*Figure: High-level architecture of multi-cluster orchestration with Karmada and OpenKruise.*
+> **💡 Copy-Paste Friendly:** All code blocks in this guide are formatted for easy copying. Simply click on any code block to copy the entire block, or copy individual commands as needed.
 
-**System Components:**
-- **Karmada Control Plane:** Manages multi-cluster orchestration and policy propagation.
-- **Member Clusters:** Kubernetes clusters registered with Karmada, each running OpenKruise.
-- **OpenKruise:** Installed in each member cluster to provide advanced workload management.
-- **Workloads:** CloneSet, Advanced StatefulSet, SidecarSet, and UnitedDeployment resources managed across clusters.
-- **Policies & Interpreters:** Control workload placement, overrides, and status aggregation.
+### Karmada Approach
+- **Architecture:** Control plane with member clusters
+- **Resource Management:** Policy-based propagation (PropagationPolicy, OverridePolicy)
+- **Custom Resources:** Requires ResourceInterpreterCustomization for OpenKruise workloads
+- **Best For:** Fine-grained control, custom interpreters, policy-based management
 
-**Interaction Flow:**
-1. The Karmada control plane manages and propagates workload manifests and policies to member clusters.
-2. OpenKruise in each member cluster manages the lifecycle of advanced workloads.
-3. Policies and interpreters ensure correct placement, customization, and status reporting for each workload.
+### Open Cluster Management (OCM) Approach  
+- **Architecture:** Hub-spoke with managed clusters
+- **Resource Management:** Direct deployment via ManifestWork
+- **Custom Resources:** Native support for OpenKruise workloads
+- **Best For:** Enterprise features, direct resource management, simpler workflows
+
+Both approaches enable you to deploy and manage OpenKruise workloads (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment) across multiple Kubernetes clusters with different trade-offs in complexity, flexibility, and enterprise features.
 
 ---
 
@@ -117,6 +141,35 @@ Multi-cluster orchestration is crucial for achieving high availability, robust d
 
 ## Karmada Integration
 
+Karmada is a Kubernetes Federation system that provides multi-cluster orchestration capabilities. It uses a control plane architecture where the Karmada control plane manages multiple member clusters through policy-based resource propagation.
+
+### Karmada Architecture Overview
+
+![Karmada Architecture Diagram](karmada-architecture.png)
+
+*Figure: Karmada control plane architecture with OpenKruise integration.*
+
+**System Components:**
+- **Karmada Control Plane:** Central management cluster running Karmada components (karmada-apiserver, karmada-controller-manager, karmada-scheduler, karmada-webhook)
+- **Member Clusters:** Kubernetes clusters registered with Karmada, each running OpenKruise controllers
+- **OpenKruise:** Installed in each member cluster to provide advanced workload management (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment)
+- **PropagationPolicy:** Controls resource distribution and placement across member clusters
+- **OverridePolicy:** Provides cluster-specific customization and overrides
+- **ResourceBinding:** Represents the binding between resources and target clusters
+- **ResourceInterpreterCustomization:** Defines how Karmada handles OpenKruise custom resources
+
+**Interaction Flow:**
+1. The Karmada control plane manages and propagates workload manifests and policies to member clusters
+2. OpenKruise in each member cluster manages the lifecycle of advanced workloads
+3. Policies and interpreters ensure correct placement, customization, and status reporting for each workload
+4. ResourceInterpreterCustomization scripts handle OpenKruise-specific resource operations
+
+**Key Benefits:**
+- Policy-based resource propagation with fine-grained control
+- Custom interpreters for OpenKruise workloads via Lua scripts
+- Centralized management with distributed execution
+- Support for complex placement and override scenarios
+
 It's a common and recommended practice to propagate the OpenKruise Custom Resource Definitions (CRDs) and its controller (manager) to member clusters using Karmada's `ClusterPropagationPolicy`. This automates the setup of OpenKruise across your fleet, ensuring consistency and simplified management, rather than manually installing it on each member cluster.
 
 ### Karmada Installation and Setup
@@ -131,35 +184,63 @@ It's a common and recommended practice to propagate the OpenKruise Custom Resour
 
 #### Installing Karmada
 
+**Quick Install Commands:**
+
 ```bash
-# Clone and install Karmada
+# Clone Karmada repository
 git clone https://github.com/karmada-io/karmada
+
+# Navigate to Karmada directory
 cd karmada
+
+# Start Karmada control plane
 hack/local-up-karmada.sh
+
+# Set KUBECONFIG to use Karmada
 export KUBECONFIG="$HOME/.kube/karmada.config"
 ```
+
+> **📋 Copy All:** You can copy the entire block above to install Karmada in one go.
+
+#### Installing OpenKruise
+
+Install OpenKruise on each member cluster:
+
+**Quick Install Commands:**
+
+```bash
+# Install OpenKruise CRDs
+kubectl apply -f https://raw.githubusercontent.com/openkruise/kruise/master/config/crds/
+
+# Install OpenKruise controller
+kubectl apply -f https://raw.githubusercontent.com/openkruise/kruise/master/config/samples/
+```
+
+> **📋 Copy All:** You can copy the entire block above to install OpenKruise in one go.
 
 #### Correctness Check: Karmada Control Plane
 
 After installation, verify that the Karmada control plane is running:
 
 ```bash
+# Check Karmada system pods
 kubectl get pods -n karmada-system
 ```
 
 > **Expected Output:** All pods should be in the `Running` state. If not, check logs with:
 >
 > ```bash
+> # Check logs for a specific pod
 > kubectl logs -n karmada-system <pod-name>
 > ```
 
 #### Registering Clusters
 
 ```bash
-# Register member clusters
+# Register a member cluster
 kubectl karmada join <CLUSTER_NAME> --cluster-kubeconfig=<MEMBER_CLUSTER_KUBECONFIG>
 
-# Verify registration
+# Verify cluster registration
 kubectl get clusters --kubeconfig=$HOME/.kube/karmada.config
 ```
 
@@ -175,11 +256,26 @@ The `ResourceInterpreterCustomization` CRD allows you to define how Karmada unde
 
 **Reference:** [Karmada Resource Interpreter Guide](https://karmada.io/docs/userguide/globalview/customizing-resource-interpreter/)
 
-### CloneSet Integration with Karmada
+### OpenKruise Workload Integration with Karmada
 
-To enable Karmada to manage OpenKruise CloneSet resources, you must define a `ResourceInterpreterCustomization` for CloneSet. This can be done using Lua scripts for advanced behaviors.
+This section covers the integration of all OpenKruise workload types with Karmada, including the required ResourceInterpreterCustomization configurations and deployment examples.
 
-#### Example: ResourceInterpreterCustomization for CloneSet
+#### CloneSet Integration
+
+CloneSet is OpenKruise's advanced deployment controller that provides enhanced features over the native Kubernetes Deployment.
+
+**What Works Well:**
+- In-place updates and rolling strategies
+- Enhanced pod management and lifecycle control
+- Status aggregation across clusters
+- Full feature support through ResourceInterpreterCustomization
+
+**Key Integration Points:**
+- Requires ResourceInterpreterCustomization for proper status handling
+- Supports all CloneSet features including in-place updates
+- Works seamlessly with Karmada's propagation policies
+
+**ResourceInterpreterCustomization for CloneSet:**
 
 ```yaml
 apiVersion: config.karmada.io/v1alpha1
@@ -264,13 +360,22 @@ spec:
 - Adjust field names as needed for other OpenKruise workloads.
 - Test interpreter scripts in a staging environment before production.
 
-### Advanced StatefulSet Integration with Karmada
+#### Advanced StatefulSet Integration
 
 Advanced StatefulSet provides more features than the native StatefulSet. You should create a similar `ResourceInterpreterCustomization` for Advanced StatefulSet, adjusting field names as needed.
 
 > **Note on Naming:** OpenKruise's Advanced StatefulSet is identified by `apiVersion: apps.kruise.io/v1beta1` and `kind: StatefulSet`. This distinguishes it from the native Kubernetes StatefulSet (`apiVersion: apps/v1`, `kind: StatefulSet`) and is important to specify correctly in policies and interpreters.
 
-#### Example: ResourceInterpreterCustomization for Advanced StatefulSet
+**What Works Well:**
+- Full StatefulSet features with enhanced capabilities
+- Volume management and PVC templates work seamlessly
+- Ordered deployment and scaling
+- Status aggregation across clusters
+
+**Key Integration Points:**
+- Requires ResourceInterpreterCustomization for proper status handling
+- Supports all Advanced StatefulSet features
+- Works with Karmada's propagation and override policies
 
 ```yaml
 apiVersion: config.karmada.io/v1alpha1
@@ -314,15 +419,6 @@ spec:
             updatedReplicas = updatedReplicas
           }
         end
-    # The retention of podManagementPolicy is not required if you use OrderedReady as recommended in best practices.
-    # retention:
-    #   luaScript: |
-    #     function Retain(desiredObj, observedObj)
-    #       if observedObj.spec.podManagementPolicy ~= nil then
-    #         desiredObj.spec.podManagementPolicy = observedObj.spec.podManagementPolicy
-    #       end
-    #       return desiredObj
-    #     end
     healthInterpretation:
       luaScript: |
         function InterpretHealth(observedObj)
@@ -333,11 +429,21 @@ spec:
         end
 ```
 
-### SidecarSet Integration with Karmada
+#### SidecarSet Integration
 
-SidecarSet is used to manage sidecar containers across pods. You can define a custom interpreter for SidecarSet as follows:
+SidecarSet is used to manage sidecar containers across pods. It provides dynamic sidecar injection and management capabilities.
 
-#### Example: ResourceInterpreterCustomization for SidecarSet
+**What Works Well:**
+- Sidecar injection works seamlessly across clusters
+- Dynamic sidecar management and updates
+- Consistent sidecar deployment across all target pods
+- Status aggregation through ResourceInterpreterCustomization
+
+**Key Integration Points:**
+- Requires ResourceInterpreterCustomization for proper status handling
+- Pod selectors must be appropriate for target clusters
+- Works with Karmada's propagation policies
+- Supports all SidecarSet features including injection strategies
 
 ```yaml
 apiVersion: config.karmada.io/v1alpha1
@@ -428,9 +534,11 @@ spec:
               namespace = namespace or (desiredObj.metadata and desiredObj.metadata.namespace)
             })
           end
+          return dependencies
+        end
 ```
 
-### UnitedDeployment Integration with Karmada
+#### UnitedDeployment Integration
 
 UnitedDeployment manages multiple workloads across different domains (e.g., zones, clusters). Its interpreter should aggregate status and handle domain-specific logic.
 
@@ -439,7 +547,17 @@ UnitedDeployment manages multiple workloads across different domains (e.g., zone
 > - **Use `UnitedDeployment` when:** You need fine-grained control over workload subsets within a single manifest, such as different resource requests or image versions per zone.
 > - **Use Karmada policies when:** You prefer to manage distribution and configuration overrides at the orchestration layer, keeping the base workload manifest simpler.
 
-#### Example: ResourceInterpreterCustomization for UnitedDeployment
+**What Works Well:**
+- Multi-domain workload management within clusters
+- Fine-grained control over workload distribution
+- Topology-based deployment strategies
+- Status aggregation across domains
+
+**Key Integration Points:**
+- Requires ResourceInterpreterCustomization for proper status handling
+- Works with Karmada's propagation policies
+- Supports topology-based distribution within clusters
+- Can be combined with Karmada's placement policies for multi-cluster distribution
 
 ```yaml
 apiVersion: config.karmada.io/v1alpha1
@@ -477,13 +595,13 @@ spec:
         end
 ```
 
-# Deployment
+### Deployment Examples
 
-Sample workload manifests for all major OpenKruise workload types (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment) are provided below for your reference. You only need to create and apply the manifests for the workloads you actually want to deploy.
+This section provides complete deployment examples for all OpenKruise workload types with Karmada, including workload manifests, propagation policies, and verification steps.
 
-## Deploying CloneSet
+#### Deploying CloneSet
 
-#### Sample CloneSet YAML
+**Sample CloneSet YAML:**
 
 ```yaml
 apiVersion: apps.kruise.io/v1alpha1
@@ -506,7 +624,7 @@ spec:
           image: nginx:1.21
 ```
 
-#### Sample PropagationPolicy YAML for CloneSet
+**Sample PropagationPolicy YAML for CloneSet:**
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -526,9 +644,9 @@ spec:
         - member2
 ```
 
-## Deploying Advanced StatefulSet
+#### Deploying Advanced StatefulSet
 
-#### Sample Advanced StatefulSet YAML
+**Sample Advanced StatefulSet YAML:**
 
 This example demonstrates a minimal Advanced StatefulSet manifest using OpenKruise:
 
@@ -562,7 +680,7 @@ spec:
             storage: 1Gi
 ```
 
-#### Sample PropagationPolicy YAML for Advanced StatefulSet
+**Sample PropagationPolicy YAML for Advanced StatefulSet:**
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -582,9 +700,9 @@ spec:
         - member2
 ```
 
-## Deploying SidecarSet
+#### Deploying SidecarSet
 
-#### Sample SidecarSet YAML
+**Sample SidecarSet YAML:**
 
 This example demonstrates a minimal SidecarSet manifest using OpenKruise:
 
@@ -606,7 +724,7 @@ spec:
       command: ["sleep", "3600"]
 ```
 
-#### Sample PropagationPolicy YAML for SidecarSet
+**Sample PropagationPolicy YAML for SidecarSet:**
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -626,9 +744,9 @@ spec:
         - member2
 ```
 
-## Deploying UnitedDeployment
+#### Deploying UnitedDeployment
 
-#### Sample UnitedDeployment YAML
+**Sample UnitedDeployment YAML:**
 
 This example demonstrates a minimal UnitedDeployment manifest using OpenKruise:
 
@@ -669,7 +787,7 @@ spec:
         replicas: 2
 ```
 
-#### Sample PropagationPolicy YAML for UnitedDeployment
+**Sample PropagationPolicy YAML for UnitedDeployment:**
 
 ```yaml
 apiVersion: policy.karmada.io/v1alpha1
@@ -781,7 +899,7 @@ To verify that your workload is distributed and running correctly across cluster
 
 > **Tip:** Always check the [Karmada Supported Versions](https://karmada.io/docs/releases/#support-versions) and [OpenKruise Releases](https://github.com/openkruise/kruise/releases) for the latest compatibility and supported features.
 
-## General Best Practices
+### General Best Practices
 
 #### CRD Synchronization
 - Ensure OpenKruise CRDs are installed on all member clusters *before* propagating workloads. Use Karmada's `ClusterPropagationPolicy` to distribute the CRD definitions themselves.
@@ -823,12 +941,34 @@ To verify that your workload is distributed and running correctly across cluster
 - Store all configuration and policy YAMLs in version control for auditability and reproducibility.
 - GitOps enables version control, auditability, and automated rollbacks for your multi-cluster policies.
 
-## Workload-Specific Best Practices
+### Advanced Patterns and Techniques
 
-### CloneSet
+**Advanced ResourceInterpreterCustomization Patterns:**
+- Use nil checks and error handling in all Lua scripts
+- Implement proper status aggregation for complex workloads
+- Create reusable interpreter components for common patterns
+- Test interpreter scripts thoroughly in staging environments
 
-**What Works Well:**
-- Basic replica management, image updates, scaling operations, and health checks are well supported.
+**Performance Optimization:**
+- Optimize Lua scripts for execution speed
+- Use efficient status aggregation algorithms
+- Implement proper resource limits for Karmada components
+- Monitor interpreter script performance
+
+**Security Best Practices:**
+- Validate all input data in Lua scripts
+- Implement proper RBAC for interpreter access
+- Use least-privilege principles for all components
+- Regularly audit interpreter scripts for security issues
+
+### Workload-Specific Best Practices
+
+#### CloneSet
+
+**Production Considerations:**
+- Use OverridePolicy for per-cluster partition control instead of the partition field
+- Implement proper status aggregation for in-place updates
+- Monitor update progress across clusters
 
 **Limitations:**
 - `partition` field is not supported for per-cluster partitioning.
@@ -859,10 +999,13 @@ spec:
           image: my-app:v1.0.0
 ```
 
-## Advanced StatefulSet
+#### Advanced StatefulSet
 
-**What Works Well:**
-- Replica management, volume management (with proper PVC propagation), ordered deployment.
+**Production Considerations:**
+- Use OverridePolicy for per-cluster partition control
+- Implement separate PropagationPolicy for PVCs if needed
+- Monitor volume provisioning across clusters
+- Use consistent storage classes across clusters
 
 **Limitations:**
 - `partition` field is not natively supported for per-cluster partitioning by Karmada's propagation. This is because Karmada propagates the entire CloneSet manifest to a member cluster, and the local OpenKruise controller then applies the `partition` value within that single cluster's scope.
@@ -900,10 +1043,13 @@ spec:
             storage: 1Gi
 ```
 
-## SidecarSet
+#### SidecarSet
 
-**What Works Well:**
-- Sidecar injection, basic status reporting.
+**Production Considerations:**
+- Use OverridePolicy to adjust selectors per cluster
+- Ensure consistent pod labeling strategy across clusters
+- Use explicit injection strategies (`Always`, `IfNotPresent`)
+- Monitor sidecar injection status across clusters
 
 **Limitations:**
 - Pod selector in `SidecarSet` may not match pods in all target clusters as expected if selectors are highly specific to a cluster's environment.
@@ -930,10 +1076,12 @@ spec:
     policy: "Always"
 ```
 
-## UnitedDeployment
+#### UnitedDeployment
 
-**What Works Well:**
-- Basic replica distribution, simple topology management.
+**Production Considerations:**
+- Use UnitedDeployment for zone-based distribution within clusters, not for cross-cluster placement
+- Keep topology pools simple to avoid conflicts with Karmada's placement engine
+- Implement proper status aggregation scripts for domain-specific logic
 
 **Limitations:**
 - Native topology management within `UnitedDeployment` (using `pools` with `nodeSelectorTerm` for cluster-level distribution) may conflict or overlap with Karmada's own advanced placement logic. Using both simultaneously for cluster selection can lead to unexpected behavior or redundant configuration.
@@ -980,15 +1128,1398 @@ spec:
               values: ["zone-b"]
 ```
 
+## Open Cluster Management (OCM) Integration
+
+Open Cluster Management (OCM) is a CNCF project that provides a comprehensive solution for managing multiple Kubernetes clusters. Unlike Karmada, OCM uses a hub-spoke architecture where the hub cluster manages multiple spoke clusters through agents.
+
+### OCM Architecture Overview
+
+![OCM Architecture Diagram](ocm-architecture.png)
+
+*Figure: OCM hub-spoke architecture with OpenKruise integration.*
+
+**System Components:**
+- **Hub Cluster:** Central management cluster running OCM components (cluster-manager, work-manager, placement-controller)
+- **Managed Clusters:** Kubernetes clusters registered with OCM, each running OCM agents (klusterlet, work-agent)
+- **OpenKruise:** Installed in each managed cluster to provide advanced workload management (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment)
+- **ManifestWork:** OCM's primary mechanism for deploying resources to managed clusters
+- **Placement:** Controls which managed clusters receive workloads
+- **Work:** Represents the actual resources deployed to managed clusters
+- **ManagedCluster:** Represents each managed cluster in the hub
+
+**Interaction Flow:**
+1. The OCM hub cluster creates ManifestWork resources that define workloads to be deployed
+2. Placement resources determine which managed clusters receive the workloads
+3. OCM agents in managed clusters apply the ManifestWork resources
+4. OpenKruise in each managed cluster manages the lifecycle of advanced workloads
+5. Status and health information flows back to the hub cluster
+
+**Key Benefits:**
+- Direct resource deployment via ManifestWork
+- Native support for OpenKruise workloads without custom interpreters
+- Enterprise-grade security and RBAC features
+- Simplified workflow compared to policy-based approaches
+- CNCF-graduated solution with mature community support
+
+### OCM Installation and Setup
+
+#### OCM Prerequisites
+
+* At least one hub cluster for OCM management
+* Two or more Kubernetes clusters as managed clusters
+* OpenKruise installed on each managed cluster
+* `kubectl` access to all clusters
+* `clusteradm` CLI tool installed
+* KinD (Kubernetes in Docker) for local development/testing
+* Helm 3.x installed (for OpenKruise installation)
+
+#### Step 1: Install clusteradm
+
+```bash
+# Install clusteradm CLI tool
+curl -L https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh | bash
+
+# Verify installation
+clusteradm version
+
+# Add clusteradm to PATH if not already added
+export PATH=$PATH:$HOME/.local/bin
+```
+
+#### Step 2: Create KinD Clusters
+
+```bash
+# Create hub cluster
+kind create cluster --name hub --config - <<EOF
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 6443
+    hostPort: 6443
+    protocol: TCP
+EOF
+
+# Create managed cluster 1
+kind create cluster --name cluster1
+
+# Create managed cluster 2
+kind create cluster --name cluster2
+
+# Verify clusters are created
+kind get clusters
+```
+
+#### Step 3: Bootstrap the Hub Cluster
+
+```bash
+# Switch to hub cluster context
+kubectl config use-context kind-hub
+
+# Initialize OCM hub with latest version
+clusteradm init --wait --context kind-hub --output-join-command-file join-command.sh
+
+# Verify hub installation
+kubectl get pods -n open-cluster-management-hub
+kubectl get crd | grep open-cluster-management
+
+# Get the join command for managed clusters
+clusteradm get token --context kind-hub
+```
+
+#### Step 4: Join Managed Clusters
+
+```bash
+# Get the hub cluster's internal Docker IP (required for KinD clusters)
+HUB_IP=$(docker inspect hub-control-plane | grep IPAddress | head -1 | awk '{print $2}' | tr -d '",')
+echo "Hub cluster IP: $HUB_IP"
+
+# Get the join token from the hub cluster
+kubectl config use-context kind-hub
+JOIN_TOKEN=$(clusteradm get token --context kind-hub | grep "clusteradm join" | awk '{print $4}')
+echo "Join token: $JOIN_TOKEN"
+
+# Clean up any existing failed setups (if needed)
+kubectl config use-context kind-cluster1
+kubectl delete ns open-cluster-management-agent --ignore-not-found=true
+kubectl delete ns open-cluster-management --ignore-not-found=true
+
+kubectl config use-context kind-cluster2
+kubectl delete ns open-cluster-management-agent --ignore-not-found=true
+kubectl delete ns open-cluster-management --ignore-not-found=true
+
+# Join cluster1 using the internal Docker IP
+kubectl config use-context kind-cluster1
+clusteradm join --hub-token $JOIN_TOKEN --hub-apiserver https://$HUB_IP:6443 --cluster-name cluster1 --wait
+
+# Join cluster2 using the internal Docker IP
+kubectl config use-context kind-cluster2
+clusteradm join --hub-token $JOIN_TOKEN --hub-apiserver https://$HUB_IP:6443 --cluster-name cluster2 --wait
+
+# Check for CSRs and managed clusters on the hub
+kubectl config use-context kind-hub
+kubectl get csr
+kubectl get managedclusters
+
+# Accept the join requests from the hub cluster
+kubectl config use-context kind-hub
+clusteradm accept --clusters cluster1,cluster2
+
+# Verify managed clusters are properly joined
+kubectl get managedclusters
+# Expected output should show HUBACCEPTED and JOINED as "True" for both clusters
+```
+
+#### Step 5: Install OpenKruise on Managed Clusters
+
+```bash
+# Install OpenKruise using Helm (recommended approach)
+helm repo add openkruise https://openkruise.github.io/charts/
+helm repo update
+
+# Switch context to each managed cluster and install OpenKruise
+kubectl config use-context kind-cluster1
+helm install kruise openkruise/kruise --version 1.6.0 --namespace kruise-system --create-namespace
+
+kubectl config use-context kind-cluster2
+helm install kruise openkruise/kruise --version 1.6.0 --namespace kruise-system --create-namespace
+
+# Verify OpenKruise installation
+kubectl config use-context kind-cluster1
+kubectl get pods -n kruise-system
+
+kubectl config use-context kind-cluster2
+kubectl get pods -n kruise-system
+```
+
+#### Step 6: Grant RBAC Access to OCM Agent
+
+```bash
+# On each managed cluster, grant appropriate permissions to the OCM agent
+kubectl config use-context kind-cluster1
+kubectl create clusterrolebinding ocm-work-agent --clusterrole=cluster-admin --serviceaccount=open-cluster-management-agent:klusterlet-work-sa --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl config use-context kind-cluster2
+kubectl create clusterrolebinding ocm-work-agent --clusterrole=cluster-admin --serviceaccount=open-cluster-management-agent:klusterlet-work-sa --dry-run=client -o yaml | kubectl apply -f -
+```
+
+#### Step 7: Verify Complete Setup
+
+```bash
+# Verify managed clusters are properly joined
+kubectl config use-context kind-hub
+kubectl get managedclusters
+# Expected output should show HUBACCEPTED and JOINED as "True" for both clusters
+
+# Check OCM components on hub
+kubectl get pods -n open-cluster-management-hub
+
+# Verify klusterlet agents are running on managed clusters
+kubectl config use-context kind-cluster1
+kubectl get pods -n open-cluster-management-agent
+
+kubectl config use-context kind-cluster2
+kubectl get pods -n open-cluster-management-agent
+
+# Verify OpenKruise is running on managed clusters
+kubectl config use-context kind-cluster1
+kubectl get pods -n kruise-system
+
+kubectl config use-context kind-cluster2
+kubectl get pods -n kruise-system
+
+# Test OCM connectivity
+kubectl config use-context kind-hub
+kubectl get manifestwork -A
+```
+
+#### Step 8: Troubleshooting Common Issues
+
+```bash
+# If clusters fail to join, check the following:
+
+# 1. Verify network connectivity
+kubectl config use-context kind-cluster1
+kubectl get nodes
+
+# 2. Check CSR status
+kubectl config use-context kind-hub
+kubectl get csr
+kubectl describe csr <csr-name>
+
+# 3. Check klusterlet agent logs
+kubectl config use-context kind-cluster1
+kubectl logs -n open-cluster-management-agent deployment/klusterlet
+
+# 4. Check hub controller logs
+kubectl config use-context kind-hub
+kubectl logs -n open-cluster-management-hub deployment/cluster-manager
+
+# 5. Verify certificates and tokens
+kubectl config use-context kind-hub
+kubectl get secret -n open-cluster-management-hub
+```
+
+**Next Steps: Deploy OpenKruise workloads via ManifestWork**
+
+---
+
+## ManifestWork for OpenKruise Workloads
+
+ManifestWork is OCM's primary mechanism for deploying resources to managed clusters. Unlike Karmada's propagation policies, ManifestWork directly defines the resources to be deployed.
+
+#### CloneSet with ManifestWork
+
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: cloneset-example
+  namespace: <MANAGED_CLUSTER_NAME>
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: CloneSet
+        metadata:
+          name: sample-cloneset
+          namespace: default
+        spec:
+          replicas: 3
+          selector:
+            matchLabels:
+              app: sample
+          template:
+            metadata:
+              labels:
+                app: sample
+            spec:
+              containers:
+                - name: nginx
+                  image: nginx:1.21
+```
+
+#### Advanced StatefulSet with ManifestWork
+
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: advanced-statefulset-example
+  namespace: <MANAGED_CLUSTER_NAME>
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1beta1
+        kind: StatefulSet
+        metadata:
+          name: sample-advanced-statefulset
+          namespace: default
+        spec:
+          serviceName: sample-service
+          replicas: 3
+          selector:
+            matchLabels:
+              app: sample-advanced-statefulset
+          template:
+            metadata:
+              labels:
+                app: sample-advanced-statefulset
+            spec:
+              containers:
+                - name: nginx
+                  image: nginx:1.21
+          volumeClaimTemplates:
+            - metadata:
+                name: data
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources:
+                  requests:
+                    storage: 1Gi
+```
+
+#### SidecarSet with ManifestWork
+
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: sidecarset-example
+  namespace: <MANAGED_CLUSTER_NAME>
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: SidecarSet
+        metadata:
+          name: sample-sidecarset
+          namespace: default
+        spec:
+          selector:
+            matchLabels:
+              app: sample
+          containers:
+            - name: sidecar
+              image: busybox:1.28
+              command: ["sleep", "3600"]
+```
+
+#### UnitedDeployment with ManifestWork
+
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: uniteddeployment-example
+  namespace: <MANAGED_CLUSTER_NAME>
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: UnitedDeployment
+        metadata:
+          name: sample-uniteddeployment
+          namespace: default
+        spec:
+          replicas: 4
+          selector:
+            matchLabels:
+              app: sample-uniteddeployment
+          template:
+            metadata:
+              labels:
+                app: sample-uniteddeployment
+            spec:
+              containers:
+                - name: nginx
+                  image: nginx:1.21
+          topology:
+            pools:
+              - name: pool-a
+                nodeSelectorTerm:
+                  matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values: ["zone-a"]
+                replicas: 2
+              - name: pool-b
+                nodeSelectorTerm:
+                  matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values: ["zone-b"]
+                replicas: 2
+```
+
+### Placement and PlacementDecision
+
+OCM uses Placement and PlacementDecision resources to control which managed clusters receive workloads:
+
+```yaml
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-example
+  namespace: default
+spec:
+  numberOfClusters: 2
+  clusterSets:
+    - default
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: PlacementDecision
+metadata:
+  name: placement-example-decision
+  namespace: default
+spec:
+  placementRef:
+    name: placement-example
+```
+
+### Deployment Examples
+
+#### Deploying CloneSet with OCM
+
+```bash
+# Create the ManifestWork
+kubectl apply -f cloneset-manifestwork.yaml
+
+# Check ManifestWork status
+kubectl get manifestwork -n <MANAGED_CLUSTER_NAME>
+
+# Check CloneSet in managed cluster
+kubectl --kubeconfig=<MANAGED_CLUSTER_KUBECONFIG> get cloneset -n default
+```
+
+#### Deploying Advanced StatefulSet with OCM
+
+```bash
+# Create the ManifestWork
+kubectl apply -f advanced-statefulset-manifestwork.yaml
+
+# Check ManifestWork status
+kubectl get manifestwork -n <MANAGED_CLUSTER_NAME>
+
+# Check Advanced StatefulSet in managed cluster
+kubectl --kubeconfig=<MANAGED_CLUSTER_KUBECONFIG> get statefulset -n default
+```
+
+#### Deploying SidecarSet with OCM
+
+```bash
+# Create the ManifestWork
+kubectl apply -f sidecarset-manifestwork.yaml
+
+# Check ManifestWork status
+kubectl get manifestwork -n <MANAGED_CLUSTER_NAME>
+
+# Check SidecarSet in managed cluster
+kubectl --kubeconfig=<MANAGED_CLUSTER_KUBECONFIG> get sidecarset -n default
+```
+
+#### Deploying UnitedDeployment with OCM
+
+```bash
+# Create the ManifestWork
+kubectl apply -f uniteddeployment-manifestwork.yaml
+
+# Check ManifestWork status
+kubectl get manifestwork -n <MANAGED_CLUSTER_NAME>
+
+# Check UnitedDeployment in managed cluster
+kubectl --kubeconfig=<MANAGED_CLUSTER_KUBECONFIG> get uniteddeployment -n default
+```
+
+## Best Practices for OCM Integration
+
+### Supported Workloads Status
+
+| Workload | OCM Support | Status | Notes |
+|----------|-------------|--------|-------|
+| **CloneSet** | ✅ Full Support | Production Ready | Direct ManifestWork deployment |
+| **Advanced StatefulSet** | ✅ Full Support | Production Ready | Direct ManifestWork deployment |
+| **SidecarSet** | ✅ Full Support | Production Ready | Direct ManifestWork deployment |
+| **UnitedDeployment** | ✅ Full Support | Production Ready | Direct ManifestWork deployment |
+
+### General Best Practices
+
+**ManifestWork Management:**
+- Use descriptive names for ManifestWork resources following the pattern: `<workload-type>-<app-name>-<cluster/environment>`
+- Organize ManifestWork resources by namespace (managed cluster name) for better isolation
+- Use labels and annotations for better resource organization and filtering
+- Consider using GitOps tools to manage ManifestWork resources for version control and automation
+- Implement proper deletion policies to avoid orphaned resources in managed clusters
+
+**Resource Organization:**
+- Keep ManifestWork resources in version control with proper branching strategies
+- Use consistent naming conventions across your OCM setup (e.g., `cloneset-nginx-prod-cluster1`)
+- Document dependencies between ManifestWork resources and their lifecycle
+- Implement proper resource cleanup strategies to prevent resource accumulation
+
+**Monitoring and Observability:**
+- Monitor ManifestWork status across all managed clusters using OCM's built-in status reporting
+- Set up alerts for failed ManifestWork deployments and stuck resources
+- Track OpenKruise workload status in managed clusters through ManifestWork conditions
+- Implement centralized logging for ManifestWork operations across all clusters
+- Use OCM's work API to query and monitor resource status programmatically
+
+**Security Best Practices:**
+- Use RBAC to control access to ManifestWork resources with least-privilege principles
+- Implement proper authentication and authorization for OCM hub and managed clusters
+- Regularly audit access controls for OCM components and service accounts
+- Use network policies to restrict communication between hub and managed clusters
+- Implement proper secret management for cluster credentials and certificates
+
+**Automation and GitOps:**
+- Use GitOps tools (e.g., Argo CD, Flux) to manage ManifestWork resources declaratively
+- Store all ManifestWork YAMLs in version control with proper review processes
+- Implement automated testing for ManifestWork deployments in staging environments
+- Use CI/CD pipelines to validate ManifestWork configurations before deployment
+- Implement rollback strategies for failed ManifestWork deployments
+
+**Performance and Scalability:**
+- Limit the number of manifests per ManifestWork to avoid timeout issues (recommended: <50 manifests)
+- Use ManifestWork deletion options to prevent resource accumulation
+- Implement proper resource quotas and limits for OCM components
+- Monitor and optimize network bandwidth between hub and managed clusters
+- Use appropriate resource requests and limits for OCM controllers
+
+**High Availability and Disaster Recovery:**
+- Deploy OCM hub components with proper replica counts and anti-affinity rules
+- Implement backup strategies for OCM configuration and state
+- Use multiple managed cluster agents for redundancy in critical clusters
+- Implement proper failover procedures for hub cluster failures
+- Test disaster recovery procedures regularly
+
+### Advanced ManifestWork Patterns
+
+**Multi-Cluster Deployment with Placement:**
+
+```yaml
+# Placement for multi-cluster distribution
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: production-placement
+  namespace: default
+spec:
+  numberOfClusters: 3
+  clusterSets:
+    - production-clusters
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            environment: production
+---
+# ManifestWork with placement reference
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: cloneset-nginx-production
+  namespace: cluster1  # Specific cluster namespace
+  labels:
+    app: nginx
+    environment: production
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: CloneSet
+        metadata:
+          name: nginx-cloneset
+          namespace: default
+        spec:
+          replicas: 3
+          selector:
+            matchLabels:
+              app: nginx
+          template:
+            metadata:
+              labels:
+                app: nginx
+            spec:
+              containers:
+                - name: nginx
+                  image: nginx:1.21
+                  resources:
+                    requests:
+                      memory: "64Mi"
+                      cpu: "250m"
+                    limits:
+                      memory: "128Mi"
+                      cpu: "500m"
+```
+
+**Conditional ManifestWork Deployment:**
+
+```yaml
+# ManifestWork with conditional deployment based on cluster labels
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: sidecarset-monitoring
+  namespace: cluster1
+  annotations:
+    ocm.io/conditional-deployment: "true"
+    ocm.io/required-labels: "monitoring=enabled"
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: SidecarSet
+        metadata:
+          name: monitoring-sidecar
+          namespace: default
+        spec:
+          selector:
+            matchLabels:
+              app: web-app
+          containers:
+            - name: monitoring-agent
+              image: prometheus/node-exporter:latest
+              ports:
+                - containerPort: 9100
+```
+
+**ManifestWork with Delete Options:**
+
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: statefulset-database
+  namespace: cluster1
+spec:
+  deleteOption:
+    propagationPolicy: Foreground
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1beta1
+        kind: StatefulSet
+        metadata:
+          name: postgres-statefulset
+          namespace: database
+        spec:
+          serviceName: postgres-service
+          replicas: 3
+          selector:
+            matchLabels:
+              app: postgres
+          template:
+            metadata:
+              labels:
+                app: postgres
+            spec:
+              containers:
+                - name: postgres
+                  image: postgres:13
+                  env:
+                    - name: POSTGRES_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: postgres-secret
+                          key: password
+          volumeClaimTemplates:
+            - metadata:
+                name: postgres-data
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources:
+                  requests:
+                    storage: 10Gi
+```
+
+### Workload-Specific Best Practices
+
+**CloneSet:**
+
+**What Works Well:**
+- Direct deployment through ManifestWork with full feature support
+- In-place updates and rolling strategies work seamlessly
+- Status aggregation through ManifestWork conditions
+
+**Best Practices:**
+- Use descriptive names for CloneSet resources (e.g., `nginx-cloneset-v1`)
+- Implement proper resource limits and requests for all containers
+- Use image pull secrets for private registries
+- Monitor CloneSet status through ManifestWork conditions
+- Consider using Placement for multi-cluster distribution
+
+**Example Configuration:**
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: cloneset-webapp-production
+  namespace: cluster1
+  labels:
+    app: webapp
+    environment: production
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: CloneSet
+        metadata:
+          name: webapp-cloneset
+          namespace: default
+        spec:
+          replicas: 5
+          selector:
+            matchLabels:
+              app: webapp
+          template:
+            metadata:
+              labels:
+                app: webapp
+                version: v1.2.0
+            spec:
+              containers:
+                - name: webapp
+                  image: myapp/webapp:v1.2.0
+                  ports:
+                    - containerPort: 8080
+                  resources:
+                    requests:
+                      memory: "128Mi"
+                      cpu: "100m"
+                    limits:
+                      memory: "256Mi"
+                      cpu: "200m"
+                  livenessProbe:
+                    httpGet:
+                      path: /health
+                      port: 8080
+                    initialDelaySeconds: 30
+                    periodSeconds: 10
+                  readinessProbe:
+                    httpGet:
+                      path: /ready
+                      port: 8080
+                    initialDelaySeconds: 5
+                    periodSeconds: 5
+          updateStrategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxUnavailable: 1
+              partition: 0
+```
+
+**Advanced StatefulSet:**
+
+**What Works Well:**
+- Full StatefulSet features with enhanced capabilities
+- Volume management and PVC templates work seamlessly
+- Ordered deployment and scaling
+
+**Best Practices:**
+- Ensure PVC templates are properly defined in ManifestWork
+- Use consistent storage classes across clusters
+- Monitor volume provisioning across managed clusters
+- Implement proper backup strategies for persistent data
+- Use anti-affinity rules for StatefulSet pods
+
+**Example Configuration:**
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: statefulset-database-production
+  namespace: cluster1
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1beta1
+        kind: StatefulSet
+        metadata:
+          name: mysql-statefulset
+          namespace: database
+        spec:
+          serviceName: mysql-service
+          replicas: 3
+          selector:
+            matchLabels:
+              app: mysql
+          template:
+            metadata:
+              labels:
+                app: mysql
+            spec:
+              containers:
+                - name: mysql
+                  image: mysql:8.0
+                  env:
+                    - name: MYSQL_ROOT_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: mysql-secret
+                          key: root-password
+                  ports:
+                    - containerPort: 3306
+                  volumeMounts:
+                    - name: mysql-data
+                      mountPath: /var/lib/mysql
+                  resources:
+                    requests:
+                      memory: "1Gi"
+                      cpu: "500m"
+                    limits:
+                      memory: "2Gi"
+                      cpu: "1000m"
+          volumeClaimTemplates:
+            - metadata:
+                name: mysql-data
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: fast-ssd
+                resources:
+                  requests:
+                    storage: 20Gi
+```
+
+**SidecarSet:**
+
+**What Works Well:**
+- Sidecar injection works seamlessly across clusters
+- Dynamic sidecar management and updates
+- Consistent sidecar deployment across all target pods
+
+**Best Practices:**
+- Ensure pod selectors are appropriate for target clusters
+- Use consistent labeling strategies across clusters
+- Monitor sidecar injection status through ManifestWork
+- Implement proper sidecar versioning and rollback strategies
+- Use injection strategies carefully (`Always`, `IfNotPresent`)
+
+**Example Configuration:**
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: sidecarset-logging-production
+  namespace: cluster1
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: SidecarSet
+        metadata:
+          name: logging-sidecar
+          namespace: default
+        spec:
+          selector:
+            matchLabels:
+              app: webapp
+          containers:
+            - name: log-collector
+              image: fluentd/fluentd:v1.14
+              command: ["fluentd", "-c", "/fluentd/etc/fluent.conf"]
+              volumeMounts:
+                - name: log-config
+                  mountPath: /fluentd/etc
+                - name: varlog
+                  mountPath: /var/log
+                - name: varlibdockercontainers
+                  mountPath: /var/lib/docker/containers
+                  readOnly: true
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "128Mi"
+                  cpu: "100m"
+          volumes:
+            - name: log-config
+              configMap:
+                name: fluentd-config
+            - name: varlog
+              hostPath:
+                path: /var/log
+            - name: varlibdockercontainers
+              hostPath:
+                path: /var/lib/docker/containers
+          injectionStrategy:
+            revision: "v1.0"
+            policy: "Always"
+```
+
+**UnitedDeployment:**
+
+**What Works Well:**
+- Multi-domain workload management within clusters
+- Fine-grained control over workload distribution
+- Topology-based deployment strategies
+
+**Best Practices:**
+- Configure topology pools appropriately for each cluster
+- Monitor replica distribution across pools
+- Use consistent node labeling across clusters
+- Implement proper pool sizing and resource allocation
+- Use UnitedDeployment for zone-based distribution within clusters
+
+**Example Configuration:**
+```yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: uniteddeployment-multizone-production
+  namespace: cluster1
+spec:
+  workload:
+    manifests:
+      - apiVersion: apps.kruise.io/v1alpha1
+        kind: UnitedDeployment
+        metadata:
+          name: webapp-uniteddeployment
+          namespace: default
+        spec:
+          replicas: 6
+          selector:
+            matchLabels:
+              app: webapp
+          template:
+            metadata:
+              labels:
+                app: webapp
+            spec:
+              containers:
+                - name: webapp
+                  image: myapp/webapp:v1.2.0
+                  ports:
+                    - containerPort: 8080
+                  resources:
+                    requests:
+                      memory: "128Mi"
+                      cpu: "100m"
+                    limits:
+                      memory: "256Mi"
+                      cpu: "200m"
+          topology:
+            pools:
+              - name: zone-a
+                nodeSelectorTerm:
+                  matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values: ["zone-a"]
+                replicas: 3
+              - name: zone-b
+                nodeSelectorTerm:
+                  matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values: ["zone-b"]
+                replicas: 3
+```
+
+### Operational Best Practices
+
+**Monitoring and Alerting:**
+- Set up Prometheus metrics collection for OCM components
+- Create dashboards for ManifestWork status across clusters
+- Implement alerts for failed deployments and stuck resources
+- Monitor resource utilization in managed clusters
+- Track OpenKruise controller health and performance
+
+**Backup and Recovery:**
+- Regularly backup OCM hub configuration and state
+- Implement disaster recovery procedures for hub cluster failures
+- Backup managed cluster configurations and credentials
+- Test recovery procedures in staging environments
+- Document recovery procedures and runbooks
+
+**Security Hardening:**
+- Use network policies to restrict cluster communication
+- Implement proper certificate management for OCM components
+- Use secrets for sensitive configuration data
+- Regularly rotate cluster credentials and certificates
+- Implement proper audit logging for all OCM operations
+
+**Performance Optimization:**
+- Monitor and optimize network bandwidth between hub and managed clusters
+- Use appropriate resource limits for OCM controllers
+- Implement proper garbage collection for old ManifestWork resources
+- Optimize ManifestWork size and complexity
+- Use connection pooling for cluster communication
+
+**Troubleshooting and Debugging:**
+- Maintain comprehensive logging for OCM operations
+- Implement proper error handling and retry mechanisms
+- Create troubleshooting guides for common issues
+- Use OCM's built-in debugging tools and APIs
+- Implement proper health checks for all components
+
+---
+
+## Comparison and Decision Guide
+
+This section provides a comprehensive comparison between Karmada and OCM to help you choose the right multi-cluster orchestration solution for your OpenKruise workloads.
+
+### Karmada vs OCM Comparison
+
+| Aspect | Karmada | OCM |
+|--------|---------|-----|
+| **Architecture** | Control Plane | Hub-Spoke |
+| **Resource Management** | Policy-based (PropagationPolicy, OverridePolicy) | Direct (ManifestWork) |
+| **Custom Resources** | Requires ResourceInterpreterCustomization | Native support |
+| **Learning Curve** | Moderate (Lua scripts required) | Lower (direct YAML) |
+| **Flexibility** | High (custom interpreters) | High (direct resource definition) |
+| **Community** | Growing | Mature (CNCF) |
+| **Enterprise Features** | Basic | Advanced (RBAC, security) |
+| **Performance** | Good | Excellent |
+| **Scalability** | Good | Excellent |
+
+### When to Use Karmada
+
+**Choose Karmada when:**
+- You need fine-grained control over resource propagation and customization
+- Your team has experience with Lua scripting and custom interpreters
+- You want policy-based resource management with complex override scenarios
+- You prefer a control plane architecture with centralized policy management
+- You need advanced placement and scheduling capabilities
+- You want to leverage Karmada's built-in resource binding and scheduling
+
+**Karmada Strengths:**
+- Advanced policy-based resource management
+- Custom interpreter framework for complex scenarios
+- Fine-grained control over resource propagation
+- Built-in scheduling and placement capabilities
+- Strong integration with Kubernetes ecosystem
+
+### When to Use OCM
+
+**Choose OCM when:**
+- You prefer direct resource management without custom interpreters
+- You need enterprise-grade security and RBAC features
+- You want a mature, CNCF-graduated solution
+- You prefer hub-spoke architecture for centralized management
+- You need advanced security features and audit capabilities
+- You want simpler deployment and management workflows
+
+**OCM Strengths:**
+- Mature, CNCF-graduated solution
+- Enterprise-grade security and RBAC
+- Direct resource management (no custom interpreters)
+- Excellent performance and scalability
+- Advanced security features and audit capabilities
+- Simpler learning curve
+
+### Migration Strategies
+
+**From Karmada to OCM:**
+1. **Assessment Phase:**
+   - Audit existing ResourceInterpreterCustomization scripts
+   - Map Karmada policies to OCM ManifestWork resources
+   - Identify custom Lua scripts that need replacement
+
+2. **Preparation Phase:**
+   - Install OCM hub and agents
+   - Create equivalent ManifestWork resources
+   - Test deployment workflows in staging environment
+
+3. **Migration Phase:**
+   - Deploy OCM alongside Karmada
+   - Gradually migrate workloads using blue-green approach
+   - Validate functionality and performance
+
+4. **Cleanup Phase:**
+   - Remove Karmada components after successful migration
+   - Update CI/CD pipelines and documentation
+
+**From OCM to Karmada:**
+1. **Assessment Phase:**
+   - Analyze existing ManifestWork resources
+   - Identify custom requirements that need interpreters
+   - Plan ResourceInterpreterCustomization scripts
+
+2. **Preparation Phase:**
+   - Install Karmada control plane
+   - Create ResourceInterpreterCustomization for OpenKruise workloads
+   - Test interpreter scripts in staging environment
+
+3. **Migration Phase:**
+   - Deploy Karmada alongside OCM
+   - Create equivalent PropagationPolicy and OverridePolicy resources
+   - Gradually migrate workloads
+
+4. **Cleanup Phase:**
+   - Remove OCM components after successful migration
+   - Update CI/CD pipelines and documentation
+
+### Decision Matrix
+
+| Requirement | Karmada Priority | OCM Priority | Recommendation |
+|-------------|------------------|--------------|----------------|
+| **Custom Resource Support** | High | Medium | Karmada (custom interpreters) |
+| **Enterprise Security** | Medium | High | OCM (CNCF, advanced RBAC) |
+| **Ease of Use** | Medium | High | OCM (direct resource management) |
+| **Performance** | Good | Excellent | OCM |
+| **Community Support** | Growing | Mature | OCM |
+| **Policy-based Management** | High | Medium | Karmada |
+| **Direct Resource Control** | Medium | High | OCM |
+| **Learning Curve** | Steep | Moderate | OCM |
+
+## Troubleshooting Guide
+
+This section provides comprehensive troubleshooting guidance for common issues encountered when using OpenKruise with Karmada or OCM.
+
+### Common Issues and Solutions
+
+#### Karmada-Specific Issues
+
+**Issue: ResourceInterpreterCustomization Script Errors**
+- **Symptoms:** Lua script errors, failed status aggregation
+- **Solutions:**
+  - Add proper nil checks in Lua scripts
+  - Test scripts in staging environment first
+  - Use Karmada's built-in debugging tools
+  - Check script syntax and field references
+
+**Issue: PropagationPolicy Not Working**
+- **Symptoms:** Resources not propagating to member clusters
+- **Solutions:**
+  - Verify cluster registration and health
+  - Check PropagationPolicy selectors
+  - Ensure CRDs are installed on member clusters
+  - Validate cluster affinity rules
+
+**Issue: Status Aggregation Problems**
+- **Symptoms:** Incorrect status reporting in control plane
+- **Solutions:**
+  - Review ResourceInterpreterCustomization scripts
+  - Check field mappings and nil handling
+  - Verify status field names match CRD specifications
+  - Test status aggregation in isolation
+
+#### OCM-Specific Issues
+
+**Issue: ManifestWork Deployment Failures**
+- **Symptoms:** ManifestWork stuck in pending or failed state
+- **Solutions:**
+  - Check managed cluster connectivity
+  - Verify agent health and registration
+  - Review ManifestWork size and complexity
+  - Check resource quotas and limits
+
+**Issue: Placement Decision Problems**
+- **Symptoms:** Workloads not deployed to expected clusters
+- **Solutions:**
+  - Verify Placement and PlacementDecision resources
+  - Check cluster labels and selectors
+  - Validate cluster health and registration
+  - Review cluster set configurations
+
+**Issue: OpenKruise Controller Issues**
+- **Symptoms:** OpenKruise workloads not working in managed clusters
+- **Solutions:**
+  - Verify OpenKruise installation on managed clusters
+  - Check CRD installation and versions
+  - Review controller logs and health
+  - Ensure proper RBAC permissions
+
+#### General OpenKruise Issues
+
+**Issue: CloneSet Update Problems**
+- **Symptoms:** In-place updates not working, stuck deployments
+- **Solutions:**
+  - Check image pull policies and secrets
+  - Verify pod template changes
+  - Review update strategy configuration
+  - Check resource availability
+
+**Issue: Advanced StatefulSet Scaling Issues**
+- **Symptoms:** Pods not scaling, volume problems
+- **Solutions:**
+  - Verify PVC templates and storage classes
+  - Check pod management policy
+  - Review anti-affinity rules
+  - Validate volume claim templates
+
+**Issue: SidecarSet Injection Problems**
+- **Symptoms:** Sidecars not injected, selector issues
+- **Solutions:**
+  - Verify pod selectors and labels
+  - Check injection strategy configuration
+  - Review sidecar container specifications
+  - Validate volume mounts and configurations
+
+### Debugging Techniques
+
+#### Karmada Debugging
+
+```bash
+# Check Karmada control plane health
+kubectl get pods -n karmada-system
+
+# View ResourceInterpreterCustomization status
+kubectl get resourceinterpretercustomization
+
+# Check propagation status
+kubectl get propagationpolicy
+kubectl get overridepolicy
+
+# Debug Lua script errors
+kubectl logs -n karmada-system deployment/karmada-webhook
+
+# Check resource binding
+kubectl get resourcebinding
+kubectl get clusterresourcebinding
+```
+
+#### OCM Debugging
+
+```bash
+# Check OCM hub health
+kubectl get pods -n open-cluster-management-hub
+
+# View managed cluster status
+kubectl get managedclusters
+
+# Check ManifestWork status
+kubectl get manifestwork -A
+
+# Debug placement decisions
+kubectl get placement
+kubectl get placementdecision
+
+# Check agent health
+kubectl get pods -n open-cluster-management-agent
+```
+
+#### OpenKruise Debugging
+
+```bash
+# Check OpenKruise controller health
+kubectl get pods -n kruise-system
+
+# View workload status
+kubectl get cloneset,statefulset,sidecarset,uniteddeployment -A
+
+# Check CRD installation
+kubectl get crd | grep kruise
+
+# Debug controller logs
+kubectl logs -n kruise-system deployment/kruise-controller-manager
+```
+
+### Performance Optimization
+
+#### Karmada Performance
+
+- **Resource Limits:** Set appropriate limits for Karmada components
+- **Interpreter Scripts:** Optimize Lua scripts for performance
+- **Policy Management:** Use efficient selectors and predicates
+- **Status Aggregation:** Limit status field updates
+
+#### OCM Performance
+
+- **ManifestWork Size:** Keep manifests under 50 per ManifestWork
+- **Network Optimization:** Optimize hub-managed cluster communication
+- **Resource Cleanup:** Implement proper deletion policies
+- **Connection Pooling:** Use connection pooling for cluster communication
+
+#### OpenKruise Performance
+
+- **Controller Resources:** Set appropriate resource limits
+- **Update Strategies:** Use efficient update strategies
+- **Resource Quotas:** Implement proper resource quotas
+- **Monitoring:** Set up comprehensive monitoring
+
+### Monitoring and Alerting
+
+#### Key Metrics to Monitor
+
+**Karmada Metrics:**
+- Resource propagation success rate
+- Interpreter script execution time
+- Policy evaluation performance
+- Cluster health and connectivity
+
+**OCM Metrics:**
+- ManifestWork deployment success rate
+- Agent health and connectivity
+- Placement decision accuracy
+- Hub-managed cluster communication
+
+**OpenKruise Metrics:**
+- Workload deployment success rate
+- Update operation performance
+- Resource utilization
+- Controller health and performance
+
+#### Recommended Alerts
+
+- Failed resource propagation
+- Interpreter script errors
+- ManifestWork deployment failures
+- Cluster connectivity issues
+- OpenKruise controller health
+- Resource quota violations
+
+### Best Practices for Troubleshooting
+
+1. **Start with Basics:**
+   - Check cluster connectivity and health
+   - Verify component installation and versions
+   - Review logs for obvious errors
+
+2. **Use Systematic Approach:**
+   - Isolate the problem (hub vs managed cluster)
+   - Check resource dependencies
+   - Validate configuration and policies
+
+3. **Leverage Built-in Tools:**
+   - Use kubectl describe for detailed resource information
+   - Check events for recent changes
+   - Review status conditions and messages
+
+4. **Document Solutions:**
+   - Keep troubleshooting runbooks
+   - Document common issues and solutions
+   - Share knowledge across teams
+
+5. **Preventive Measures:**
+   - Regular health checks and monitoring
+   - Automated testing in staging environments
+   - Version compatibility validation
+
 ## Troubleshooting and Limitations
 
 > **Tip:** See the Troubleshooting Guide section for common issues, debug commands, and workarounds for known limitations.
 
 ### Summary
 
-- Follow these best practices to ensure robust, secure, and maintainable multi-cluster orchestration with Karmada and OpenKruise.
+- Follow these best practices to ensure robust, secure, and maintainable multi-cluster orchestration with Karmada/OCM and OpenKruise.
+- Choose the right orchestration solution based on your requirements: Karmada for policy-based management with custom interpreters, or OCM for direct resource management with enterprise features.
 - Regularly review official documentation for updates and new features.
 - Use monitoring, automation, and security best practices for production environments.
+- Consider migration strategies when transitioning between orchestration solutions.
 
 ---
+
+## FAQ
+
+### General Questions
+
+**Q: Which multi-cluster orchestration solution should I choose - Karmada or OCM?**
+A: Choose Karmada if you need fine-grained policy-based control and are comfortable with Lua scripting. Choose OCM if you prefer direct resource management and need enterprise-grade security features.
+
+**Q: Do I need to install OpenKruise on all clusters?**
+A: Yes, OpenKruise must be installed on all member/managed clusters where you want to deploy OpenKruise workloads.
+
+**Q: Can I use both Karmada and OCM simultaneously?**
+A: While technically possible, it's not recommended as it can lead to conflicts and complexity. Choose one solution based on your requirements.
+
+**Q: How do I migrate from Karmada to OCM or vice versa?**
+A: Follow the migration strategies outlined in the Comparison and Decision Guide section. Use a blue-green approach to minimize downtime.
+
+### Technical Questions
+
+**Q: Why do I need ResourceInterpreterCustomization for OpenKruise workloads in Karmada?**
+A: OpenKruise workloads are custom resources that Karmada doesn't understand natively. ResourceInterpreterCustomization tells Karmada how to handle these resources.
+
+**Q: What's the difference between ManifestWork and PropagationPolicy?**
+A: ManifestWork (OCM) directly defines resources to deploy to managed clusters, while PropagationPolicy (Karmada) defines rules for how to propagate existing resources from the control plane to member clusters.
+
+**Q: How do I monitor multi-cluster deployments?**
+A: Use the monitoring and alerting strategies outlined in the best practices sections for both Karmada and OCM.
+
+**Q: What happens if a cluster becomes unavailable?**
+A: The orchestration solution will mark the cluster as unavailable and stop deploying to it. Workloads on other clusters continue running normally. Karmada will show the cluster as `NotReady` and OCM will show it as `ManagedClusterConditionAvailable: False`.
+
+### Troubleshooting Questions
+
+**Q: My ResourceInterpreterCustomization script is failing. What should I do?**
+A: Check for nil values, syntax errors, and test the script in a staging environment first. Review the debugging techniques section.
+
+**Q: ManifestWork is stuck in pending state. How do I fix it?**
+A: Check cluster connectivity, agent health, and resource quotas. Review the OCM-specific troubleshooting section.
+
+**Q: Workloads are not propagating to expected clusters.**
+A: Check PropagationPolicy/Placement configurations, cluster health, and resource selectors. For Karmada, verify the cluster is registered and healthy. For OCM, check that the managed cluster is accepted and the agent is running.
+
+## References
+
+### Official Documentation
+- [OpenKruise Documentation](https://openkruise.io/)
+- [Karmada Documentation](https://karmada.io/)
+- [Open Cluster Management Documentation](https://open-cluster-management.io/)
+
+### GitHub Repositories
+- [OpenKruise GitHub](https://github.com/openkruise/kruise)
+- [Karmada GitHub](https://github.com/karmada-io/karmada)
+- [OCM GitHub](https://github.com/open-cluster-management-io/OCM)
+
+### Related Resources
+- [Kubernetes Multi-Cluster Patterns](https://kubernetes.io/docs/concepts/cluster-administration/multicluster/)
+- [CNCF Multi-Cluster Working Group](https://github.com/cncf/tag-app-delivery/blob/main/multicluster/README.md)
+
+### Community Resources
+- [OpenKruise Slack](https://openkruise.slack.com/)
+- [Karmada Slack](https://karmada.slack.com/)
+- [OCM Slack](https://open-cluster-management.slack.com/)
 
