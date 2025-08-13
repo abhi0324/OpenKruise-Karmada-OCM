@@ -2549,10 +2549,6 @@ A: Check PropagationPolicy/Placement configurations, cluster health, and resourc
 - [Karmada GitHub](https://github.com/karmada-io/karmada)
 - [OCM GitHub](https://github.com/open-cluster-management-io/OCM)
 
-### Related Resources
-- [Kubernetes Multi-Cluster Patterns](https://kubernetes.io/docs/concepts/cluster-administration/multicluster/)
-- [CNCF Multi-Cluster Working Group](https://github.com/cncf/tag-app-delivery/blob/main/multicluster/README.md)
-
 ### Community Resources
 - [OpenKruise Slack](https://openkruise.slack.com/)
 - [Karmada Slack](https://karmada.slack.com/)
