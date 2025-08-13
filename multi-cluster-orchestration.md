@@ -1,7 +1,5 @@
 # Best Practices for OpenKruise Multi-Cluster Orchestration (Karmada/OCM)
 
-**Last Updated:** August 7, 2025
-
 ---
 
 ## Table of Contents
@@ -90,8 +88,6 @@ Multi-cluster orchestration is crucial for achieving high availability, robust d
 
 This guide covers two main approaches for multi-cluster orchestration with OpenKruise:
 
-> **💡 Copy-Paste Friendly:** All code blocks in this guide are formatted for easy copying. Simply click on any code block to copy the entire block, or copy individual commands as needed.
-
 ### Karmada Approach
 - **Architecture:** Control plane with member clusters
 - **Resource Management:** Policy-based propagation (PropagationPolicy, OverridePolicy)
@@ -168,72 +164,107 @@ It's a common and recommended practice to propagate the OpenKruise Custom Resour
 
 #### Prerequisites
 
-* At least one Karmada control plane cluster
-* Two or more Kubernetes clusters as Karmada members
-* OpenKruise installed on each member cluster
-* `kubectl` access to all clusters
-* Familiarity with YAML and basic Lua scripting
+* **Kubernetes Clusters:** At least one control plane cluster and two or more member clusters
+* **Kubernetes Versions:** 1.19+ for Karmada control plane, 1.16+ for member clusters
+* **Tools Required:** `kubectl`, `helm` 3.x, `curl`
+* **Network Connectivity:** All clusters must be able to communicate with each other
 
-#### Installing Karmada
+#### Installing Karmada Control Plane
 
-**Quick Install Commands:**
+##### Method 1: Using karmadactl (Recommended)
+
+```bash
+# Install karmadactl CLI tool
+curl -s https://raw.githubusercontent.com/karmada-io/karmada/master/hack/install-cli.sh | sudo bash
+
+# Initialize Karmada control plane
+karmadactl init
+
+# Export kubeconfig for Karmada
+export KUBECONFIG="$HOME/.kube/karmada.config:$HOME/.kube/config"
+```
+
+##### Method 2: Using Local Development Script
 
 ```bash
 # Clone Karmada repository
 git clone https://github.com/karmada-io/karmada
-
-# Navigate to Karmada directory
 cd karmada
 
-# Start Karmada control plane
+# Start Karmada control plane (for development/testing)
 hack/local-up-karmada.sh
 
 # Set KUBECONFIG to use Karmada
 export KUBECONFIG="$HOME/.kube/karmada.config"
 ```
 
-> **📋 Copy All:** You can copy the entire block above to install Karmada in one go.
-
 #### Installing OpenKruise
 
-Install OpenKruise on each member cluster:
-
-**Quick Install Commands:**
+Install OpenKruise on each member cluster using Helm:
 
 ```bash
-# Install OpenKruise CRDs
-kubectl apply -f https://raw.githubusercontent.com/openkruise/kruise/master/config/crds/
+# Add OpenKruise Helm repository
+helm repo add openkruise https://openkruise.github.io/charts/
+helm repo update
 
-# Install OpenKruise controller
-kubectl apply -f https://raw.githubusercontent.com/openkruise/kruise/master/config/samples/
+# Install OpenKruise using Helm
+helm install kruise openkruise/kruise --version 1.8.0 --namespace kruise-system --create-namespace
 ```
 
-> **📋 Copy All:** You can copy the entire block above to install OpenKruise in one go.
+#### Verification
 
-#### Correctness Check: Karmada Control Plane
-
-After installation, verify that the Karmada control plane is running:
+##### Check Karmada Control Plane
 
 ```bash
 # Check Karmada system pods
 kubectl get pods -n karmada-system
+
+# Verify cluster status
+kubectl get clusters --kubeconfig="$HOME/.kube/karmada.config"
 ```
 
-> **Expected Output:** All pods should be in the `Running` state. If not, check logs with:
->
-> ```bash
-> # Check logs for a specific pod
-> kubectl logs -n karmada-system <pod-name>
-> ```
+##### Check OpenKruise Installation
 
-#### Registering Clusters
+```bash
+# Check OpenKruise system pods
+kubectl get pods -n kruise-system
+
+# Verify OpenKruise CRDs are installed
+kubectl get crd | grep kruise
+```
+
+#### Registering Member Clusters
 
 ```bash
 # Register a member cluster
-kubectl karmada join <CLUSTER_NAME> --cluster-kubeconfig=<MEMBER_CLUSTER_KUBECONFIG>
+karmadactl join <CLUSTER_NAME> --cluster-kubeconfig=<MEMBER_CLUSTER_KUBECONFIG>
 
 # Verify cluster registration
-kubectl get clusters --kubeconfig=$HOME/.kube/karmada.config
+kubectl get clusters --kubeconfig="$HOME/.kube/karmada.config"
+```
+
+#### Advanced: Automating OpenKruise Deployment
+
+You can propagate OpenKruise CRDs to member clusters using Karmada's `ClusterPropagationPolicy`:
+
+```yaml
+apiVersion: policy.karmada.io/v1alpha1
+kind: ClusterPropagationPolicy
+metadata:
+  name: openkruise-crds
+spec:
+  resourceSelectors:
+    - apiVersion: apiextensions.k8s.io/v1
+      kind: CustomResourceDefinition
+      labelSelector:
+        matchLabels:
+          kruise.io/schema-gen: "true"
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member-cluster-1
+        - member-cluster-2
+  conflictResolution: Overwrite
 ```
 
 ### Resource Interpreter Framework
