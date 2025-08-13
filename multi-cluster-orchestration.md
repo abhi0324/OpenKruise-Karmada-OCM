@@ -5,16 +5,16 @@
 ## Table of Contents
 - [Introduction](#introduction)
 - [Multi-Cluster Orchestration Overview](#multi-cluster-orchestration-overview)
-- [Project Scope](#project-scope)
 - [OpenKruise Workloads Overview](#openkruise-workloads-overview)
 - [Karmada Integration](#karmada-integration)
   - [Karmada Architecture Overview](#karmada-architecture-overview)
   - [Karmada Installation and Setup](#karmada-installation-and-setup)
     - [Prerequisites](#prerequisites)
-    - [Installing Karmada](#installing-karmada)
+    - [Installing Karmada Control Plane](#installing-karmada-control-plane)
     - [Installing OpenKruise](#installing-openkruise)
-    - [Correctness Check: Karmada Control Plane](#correctness-check-karmada-control-plane)
-    - [Registering Clusters](#registering-clusters)
+    - [Verification](#verification)
+    - [Registering Member Clusters](#registering-member-clusters)
+    - [Advanced: Automating OpenKruise Deployment](#advanced-automating-openkruise-deployment)
   - [Resource Interpreter Framework](#resource-interpreter-framework)
   - [OpenKruise Workload Integration with Karmada](#openkruise-workload-integration-with-karmada)
     - [CloneSet Integration](#cloneset-integration)
@@ -103,12 +103,6 @@ This guide covers two main approaches for multi-cluster orchestration with OpenK
 Both approaches enable you to deploy and manage OpenKruise workloads (CloneSet, Advanced StatefulSet, SidecarSet, UnitedDeployment) across multiple Kubernetes clusters with different trade-offs in complexity, flexibility, and enterprise features.
 
 ---
-
-## Project Scope
-
-- **Objective:** Provide official, actionable guidelines for multi-cluster OpenKruise workload management.
-- **Audience:** Engineers and operators working with Karmada, OCM, and OpenKruise.
-- **Coverage:** Installation, integration, workload deployment, validation, troubleshooting, and best practices.
 
 ### Goals
 - Successfully deploy and manage OpenKruise workloads with Karmada/OCM
